@@ -10,7 +10,7 @@
 | **Priority** | P0 — the primary deliverable of the entire system |
 | **Delivery Phase** | Phase 6 |
 | **Pipeline Stage** | Stage 3 — sequential, requires all Stage 1 and Stage 2 outputs |
-| **Model** | `claude-opus-4-8` (highest reasoning model) |
+| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `claude-opus-4-8` (premium/hybrid) |
 
 ---
 
@@ -134,6 +134,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §2.2.6 NBA Agent, §2.2.6 action catalogue (9 actions), §6.1 Stage 3, §6.2 Dispute Hold Path, §10.2 Screen 3 NBA Card |
-| **Deployment** | Render.com FastAPI; Anthropic API (`claude-opus-4-8` — highest cost, justified by synthesis complexity); prompt caching on policy/constraint system prompt |
+| **Deployment** | Render.com FastAPI; default = Groq free tier (`llama-3.3-70b-versatile`); `hybrid`/`premium` mode = Anthropic (`claude-opus-4-8`); see `docs/llm_provider_strategy.md` |
 | **Observability** | `nba_action_recommended_total{action}` counter (key business metric, Grafana Dashboard 2 pie chart); `agent_execution_duration_seconds{agent="nba"}` histogram (Stage 3 bottleneck); `stage3.nba` Tempo span with `nba.action`, `nba.confidence`, `nba.blocked_by_dispute` attributes; `nba_recommended` INFO Loki event |
 | **SRE** | NBA recommendation rate SLO ≥ 98% of completed workflows; p95 latency for NBA ≤ 5s; highest-cost agent — Opus 4.8 token spend tracked via `llm_tokens_used_total{agent="nba",model="claude-opus-4-8"}`; NBA failure = `human_review` pipeline status |

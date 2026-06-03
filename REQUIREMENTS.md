@@ -193,14 +193,15 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 ### 3.2 Core Dependencies
 
 ```
-# LLM & Agent Framework
-anthropic>=0.40.0              # Claude API SDK (Opus/Sonnet/Haiku)
-anthropic[vertex]              # Optional: Vertex AI deployment
+# LLM Providers (install the one matching LLM_PROVIDER env var)
+anthropic>=0.40.0              # premium / hybrid NBA agent (optional for free_cloud)
+langchain-anthropic>=0.3.0     # LangChain <-> Anthropic (premium / hybrid)
+langchain-groq>=0.2.0          # free_cloud mode — Groq free tier (recommended default)
+langchain-ollama>=0.2.0        # local mode — Ollama local models
 
 # Orchestration & Workflow
 langgraph>=0.2.0               # Agent graph orchestration (state machines)
-langchain-core>=0.3.0          # Tool abstractions and message types
-langchain-anthropic>=0.3.0     # LangChain <-> Anthropic integration
+langchain-core>=0.3.0          # Provider-agnostic LLM abstractions
 
 # UI
 streamlit>=1.40.0              # Web UI framework (primary demo interface)
@@ -237,19 +238,60 @@ mypy>=1.13.0                   # Static type checking
 pre-commit>=4.0.0
 ```
 
-### 3.3 Claude API Usage
+### 3.3 LLM Provider Strategy
 
-| Agent | Model | Reason |
-|---|---|---|
-| Orchestrator | `claude-opus-4-8` | Pipeline management, state routing, error handling |
-| Customer Profile | `claude-sonnet-4-6` | Profile synthesis and risk classification |
-| Account Profile | `claude-sonnet-4-6` | Structured data retrieval and summarisation |
-| Arrears Prediction | `claude-sonnet-4-6` | Pattern analysis, trajectory calculation, probabilistic reasoning |
-| Dispute | `claude-sonnet-4-6` | Dispute classification and hold-flag logic |
-| NBA | `claude-opus-4-8` | Reasoning-intensive synthesis of 4 inputs → single action |
-| Audit | `claude-haiku-4-5-20251001` | Lightweight, high-throughput decision logging |
+The system is **provider-agnostic** by design. A single `LLM_PROVIDER` environment variable selects the active provider. The default for the PoC is `free_cloud` (Groq — $0 cost).
 
-**Prompt caching** must be enabled on all agents that use static system prompts (compliance rules, company policies) to reduce latency and cost.
+Full strategy: [`docs/llm_provider_strategy.md`](docs/llm_provider_strategy.md)
+
+#### Four Modes
+
+| Mode | Provider | Cost | When to Use |
+|---|---|---|---|
+| `free_cloud` **(PoC default)** | Groq free tier | **$0** | All development, CI tests, internal demos |
+| `local` | Ollama (local machine) | **$0** | Offline dev, data-sensitive environments |
+| `hybrid` | Groq (agents 1–5) + Anthropic (NBA only) | ~$0.01–0.02/run | Live client demo where NBA quality matters |
+| `premium` | Anthropic only | ~$0.05–0.10/run | Production pilot |
+
+#### Per-Agent Model Assignment
+
+| Agent | `free_cloud` (Groq) | `local` (Ollama) | `premium` (Anthropic) | `hybrid` |
+|---|---|---|---|---|
+| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-opus-4-8` | `llama-3.3-70b-versatile` |
+| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
+| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
+| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
+| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
+| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` | `claude-opus-4-8` | **`claude-opus-4-8`** ← only Anthropic call |
+| Audit | `llama-3.1-8b-instant` | `phi4:latest` | `claude-haiku-4-5-20251001` | `llama-3.1-8b-instant` |
+
+#### Implementation: `LLMClientFactory`
+
+```python
+# src/collection_assistant/llm/client_factory.py
+from collection_assistant.config import Settings, LLMProvider
+
+def get_llm(agent_name: str, settings: Settings):
+    model_id = MODEL_MAP[settings.llm_provider][agent_name]
+    if settings.llm_provider == LLMProvider.FREE_CLOUD:
+        from langchain_groq import ChatGroq
+        return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
+    elif settings.llm_provider == LLMProvider.LOCAL:
+        from langchain_ollama import ChatOllama
+        return ChatOllama(model=model_id, base_url=settings.ollama_base_url, temperature=0)
+    else:  # premium or hybrid
+        if "claude" in model_id:
+            from langchain_anthropic import ChatAnthropic
+            return ChatAnthropic(model=model_id, api_key=settings.anthropic_api_key, temperature=0)
+        else:
+            from langchain_groq import ChatGroq
+            return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
+```
+
+#### Note on MCP With Non-Anthropic Providers
+The Anthropic SDK's `mcp_servers=[]` shortcut only works with Anthropic. For Groq/Ollama, the standard `mcp` Python client (`StdioClientSession`) is used directly — fully provider-agnostic. See `docs/mcp_rag_strategy.md §2.3`.
+
+**Prompt caching** applies only in `premium` / `hybrid` modes when Anthropic is the active provider.
 
 ---
 
@@ -267,6 +309,10 @@ ai-fde-collection-assistant/
 ├── src/
 │   └── collection_assistant/
 │       ├── __init__.py
+│       │
+│       ├── llm/                           # Provider-agnostic LLM abstraction
+│       │   ├── __init__.py
+│       │   └── client_factory.py          # get_llm(agent_name, settings) → BaseChatModel
 │       │
 │       ├── agents/                        # One module per agent
 │       │   ├── __init__.py
@@ -744,25 +790,28 @@ Each tool implementation must:
 # config.py — via pydantic-settings + .env
 
 class Settings(BaseSettings):
-    # Anthropic
-    anthropic_api_key: str
-    orchestrator_model: str = "claude-opus-4-8"
-    agent_model: str = "claude-sonnet-4-6"
-    audit_model: str = "claude-haiku-4-5-20251001"
+    # LLM Provider (free_cloud | local | hybrid | premium)
+    llm_provider: str = "free_cloud"       # DEFAULT: Groq free tier — zero cost
 
-    # Redis (shared state cache)
-    redis_url: str = "redis://localhost:6379/0"
+    # Groq (free_cloud / hybrid non-NBA agents)
+    groq_api_key: str = ""                 # Free at console.groq.com — no credit card
 
-    # PostgreSQL (audit persistence)
-    database_url: str = "postgresql+psycopg2://user:pass@localhost/collections"
+    # Anthropic (premium / hybrid NBA agent only)
+    anthropic_api_key: str = ""            # Leave blank for free_cloud mode
+
+    # Ollama (local mode — no key needed)
+    ollama_base_url: str = "http://localhost:11434"
+
+    # SQLite
+    database_url: str = "sqlite:///data/collection_assistant.db"
 
     # Feature flags
     enable_human_review: bool = True
     max_agent_retries: int = 3
-    compliance_strict_mode: bool = True
 
     # Observability
-    otel_endpoint: str = "http://localhost:4317"
+    grafana_otlp_endpoint: str = ""
+    grafana_otlp_token: str = ""
     log_level: str = "INFO"
 ```
 

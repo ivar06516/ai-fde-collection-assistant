@@ -10,7 +10,7 @@
 | **Priority** | P0 |
 | **Delivery Phase** | Phase 3 |
 | **Pipeline Stage** | Stage 1 — parallel with UC-003 |
-| **Model** | `claude-sonnet-4-6` |
+| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `claude-sonnet-4-6` (premium) |
 
 ---
 
