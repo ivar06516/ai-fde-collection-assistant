@@ -26,7 +26,7 @@ result = get_customer_demographics(customer_id)
 ```python
 # Via MCP protocol (new)
 response = client.beta.messages.create(
-    model="claude-sonnet-4-6",
+    model="llama-3.3-70b-versatile",
     mcp_servers=[{"type": "stdio", "command": "python",
                   "args": ["src/.../data_server.py"]}],
     ...

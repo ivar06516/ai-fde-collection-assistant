@@ -17,7 +17,7 @@
 
 ### UC-015A: Dispute Precedent RAG (Dispute Agent)
 
-Dispute type classification currently relies solely on Claude Sonnet 4.6 reasoning. With a Dispute Precedent RAG, the agent retrieves similar past disputes before classifying — reducing misclassification.
+Dispute type classification currently relies solely on Groq Llama 3.3 70B reasoning. With a Dispute Precedent RAG, the agent retrieves similar past disputes before classifying — reducing misclassification.
 
 **Document corpus:** `dispute_resolution_guide.md` — contains:
 - 5-type taxonomy with example descriptions per type
@@ -46,7 +46,7 @@ After ~20 pipeline runs, the `workflow_audit` table contains real precedents. Th
 | 1 | Dispute Agent retrieves each active dispute's description | From `disputes.description` in SQLite via MCP Data Server |
 | 2 | **RAG query** per dispute | `DisputeRetriever.retrieve(dispute_description, n_results=2)` |
 | 3 | **Retrieved precedents injected** into classification prompt | "Similar disputes were classified as: {type}. Key signals: {signals}" |
-| 4 | `classify_dispute_type()` LLM call | Claude Sonnet 4.6 classifies with precedent context → higher accuracy for edge cases |
+| 4 | `classify_dispute_type()` LLM call | Groq Llama 3.3 70B classifies with precedent context → higher accuracy for edge cases |
 | 5 | Classification result + retrieved precedents stored | `dispute_summary['classification_precedents']` added for Audit Trail |
 
 ---

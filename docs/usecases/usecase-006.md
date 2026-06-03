@@ -10,7 +10,7 @@
 | **Priority** | P0 — the primary deliverable of the entire system |
 | **Delivery Phase** | Phase 6 |
 | **Pipeline Stage** | Stage 3 — sequential, requires all Stage 1 and Stage 2 outputs |
-| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `claude-opus-4-8` (premium/hybrid) |
+| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `llama-3.3-70b-versatile` (premium/hybrid) |
 
 ---
 
@@ -43,7 +43,7 @@
 |---|---|---|---|
 | 1 | `evaluate_action_eligibility` | `dispute_summary.collection_hold`, `account_profile.account_status` | Filtered list of eligible actions (hard constraints applied) |
 | 2 | Arrears signal routing | `arrears_trajectory`, `default_probability` | Boosted weights for urgency-matched actions |
-| 3 | `score_action_options` | Full state + eligible actions | Each action scored 0.0–1.0 by Claude Opus 4.8 |
+| 3 | `score_action_options` | Full state + eligible actions | Each action scored 0.0–1.0 by Groq Llama 3.3 70B |
 | 4 | `generate_recommendation_rationale` | Top-scored action + full state | 2–4 sentence human-readable rationale |
 | 5 | `validate_against_policy` | Final recommendation | Confirms action is in approved catalogue |
 | 6 | Returns `NBARecommendation` TypedDict | — | Written to `state.nba_recommendation` |
@@ -123,7 +123,7 @@
 
 ### AC-006-09: NBA Completes Within Latency Budget
 - **Given** a standard pipeline run
-- **When** the NBA Agent (Stage 3, Claude Opus 4.8) runs
+- **When** the NBA Agent (Stage 3, Groq Llama 3.3 70B) runs
 - **Then** NBA Agent completes in < 5 seconds (p95)
 - **Verified by** Grafana `agent_execution_duration_seconds{agent="nba"}` p95
 
@@ -134,6 +134,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §2.2.6 NBA Agent, §2.2.6 action catalogue (9 actions), §6.1 Stage 3, §6.2 Dispute Hold Path, §10.2 Screen 3 NBA Card |
-| **Deployment** | Render.com FastAPI; default = Groq free tier (`llama-3.3-70b-versatile`); `hybrid`/`premium` mode = Anthropic (`claude-opus-4-8`); see `docs/llm_provider_strategy.md` |
+| **Deployment** | Render.com FastAPI; default = Groq free tier (`llama-3.3-70b-versatile`); `hybrid`/`premium` mode = Anthropic (`llama-3.3-70b-versatile`); see `docs/llm_provider_strategy.md` |
 | **Observability** | `nba_action_recommended_total{action}` counter (key business metric, Grafana Dashboard 2 pie chart); `agent_execution_duration_seconds{agent="nba"}` histogram (Stage 3 bottleneck); `stage3.nba` Tempo span with `nba.action`, `nba.confidence`, `nba.blocked_by_dispute` attributes; `nba_recommended` INFO Loki event |
-| **SRE** | NBA recommendation rate SLO ≥ 98% of completed workflows; p95 latency for NBA ≤ 5s; highest-cost agent — Opus 4.8 token spend tracked via `llm_tokens_used_total{agent="nba",model="claude-opus-4-8"}`; NBA failure = `human_review` pipeline status |
+| **SRE** | NBA recommendation rate SLO ≥ 98% of completed workflows; p95 latency for NBA ≤ 5s; highest-cost agent — Opus 4.8 token spend tracked via `llm_tokens_used_total{agent="nba",model="llama-3.3-70b-versatile"}`; NBA failure = `human_review` pipeline status |

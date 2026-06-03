@@ -10,7 +10,7 @@
 | **Priority** | P0 — transparency is a stated PoC goal |
 | **Delivery Phase** | Phase 7 (Audit Agent), Phase 8 (API endpoint), Phase 9 (UI expander) |
 | **Pipeline Stage** | Stage 3 — Audit Agent runs after NBA Agent |
-| **Model** | `claude-haiku-4-5-20251001` (lightweight logging agent) |
+| **Model** | `llama-3.1-8b-instant` (lightweight logging agent) |
 
 ---
 
@@ -104,7 +104,7 @@
 ### AC-007-07: Audit Agent Uses Haiku Model (Cost Control)
 - **Given** any completed pipeline run
 - **When** token usage metrics are checked
-- **Then** `llm_tokens_used_total{agent="audit",model="claude-haiku-4-5-20251001"}` counter is incremented; Haiku is not used for any other agent
+- **Then** `llm_tokens_used_total{agent="audit",model="llama-3.1-8b-instant"}` counter is incremented; Haiku is not used for any other agent
 - **Verified by** Grafana `llm_tokens_used_total` metric filtered by model
 
 ---

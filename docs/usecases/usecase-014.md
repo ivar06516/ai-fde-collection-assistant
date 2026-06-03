@@ -16,7 +16,7 @@
 
 ## Context: What Changes in the NBA Agent
 
-**Before RAG:** NBA Agent receives only the four upstream profiles and reasons using Claude Opus 4.8's training knowledge.
+**Before RAG:** NBA Agent receives only the four upstream profiles and reasons using Groq Llama 3.3 70B's training knowledge.
 
 **After RAG:** NBA Agent first runs a retrieval pre-pass, then injects retrieved policy chunks into the system prompt before LLM synthesis. The rationale now cites specific policy sections.
 
@@ -36,7 +36,7 @@ State (customer + account + arrears + dispute)
   └──────────┬───────────────────┘
              │ Top 3 chunks (cosine similarity)
              ▼
-  Claude Opus 4.8 synthesis
+  Groq Llama 3.3 70B synthesis
   (base state + policy context)
              │
              ▼
@@ -105,7 +105,7 @@ State (customer + account + arrears + dispute)
 
 ### AC-014-03: NBA Rationale References Policy Context
 - **Given** policy chunks are retrieved and injected into the NBA Agent's system prompt
-- **When** Claude Opus 4.8 generates the rationale
+- **When** Groq Llama 3.3 70B generates the rationale
 - **Then** `nba_recommendation.rationale` contains at least one reference to retrieved context (e.g., "According to collection policy...", "Per the NBA action guide...", or a direct policy-consistent statement not derivable from the state alone)
 - **Verified by** Phase 18 integration test with qualitative rationale assertion
 

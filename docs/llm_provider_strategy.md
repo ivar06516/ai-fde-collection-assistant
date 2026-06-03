@@ -10,7 +10,7 @@ Using Anthropic Claude for all 7 agents in every pipeline run incurs token costs
 
 | Component | Anthropic-Specific? | Can Be Swapped? |
 |---|---|---|
-| Claude model IDs (`claude-sonnet-4-6`, `claude-opus-4-8`) | Yes | Yes — replace with any provider's model ID |
+| Claude model IDs (`llama-3.3-70b-versatile`, `llama-3.3-70b-versatile`) | Yes | Yes — replace with any provider's model ID |
 | Anthropic SDK MCP client wrapper | Yes | Yes — use `mcp` Python client directly (provider-agnostic) |
 | Prompt caching (`cache_control` header) | Yes | Drop entirely for PoC; not needed |
 | Tool use / function calling | No — standard across providers | Already abstracted by LangChain |
@@ -33,7 +33,7 @@ Using Anthropic Claude for all 7 agents in every pipeline run incurs token costs
 | **Google Gemini Flash** | 15 RPM / 1M TPM free | Gemini 1.5 Flash | ✅ Good | ✅ JSON mode | ⚡ Fast | Data sent to Google |
 | **Mistral (free tier)** | Rate-limited | Mistral 7B | ⚠️ Limited | ⚠️ Variable | Medium | Data sent to Mistral |
 | **HuggingFace Inference** | Rate-limited | Various | ⚠️ Variable | ⚠️ Variable | Slow | Data sent to HF |
-| **Anthropic (paid)** | No free tier | Claude Opus 4.8 | ✅ Best-in-class | ✅ Best | ⚡ Fast | Data sent to Anthropic |
+| **Anthropic (paid)** | No free tier | Groq Llama 3.3 70B | ✅ Best-in-class | ✅ Best | ⚡ Fast | Data sent to Anthropic |
 
 ---
 
@@ -52,14 +52,14 @@ Using Anthropic Claude for all 7 agents in every pipeline run incurs token costs
 - **Cost: $0 always**
 
 ### Mode 3 — `premium` (Client demo with highest quality) → Anthropic
-- NBA Agent only uses **Claude Opus 4.8** (most reasoning-intensive)
-- All other agents use **Claude Sonnet 4.6**
+- NBA Agent only uses **Groq Llama 3.3 70B** (most reasoning-intensive)
+- All other agents use **Groq Llama 3.3 70B**
 - Keeps quality highest where it matters most
 - **Cost: tokens per run (≈ $0.01–0.05 per workflow run)**
 
 ### Mode 4 — `hybrid` (Best of both) → Groq + Anthropic NBA only
 - Agents 1–5 (data collection, arrears, dispute) → Groq Llama 3.3 70B
-- NBA Agent only → Anthropic Claude Opus 4.8
+- NBA Agent only → Anthropic Groq Llama 3.3 70B
 - Audit Agent → Groq Llama 3.1 8B (or Haiku equivalent)
 - **Cost reduction: ~80% vs all-Anthropic**
 
@@ -69,13 +69,13 @@ Using Anthropic Claude for all 7 agents in every pipeline run incurs token costs
 
 | Agent | `free_cloud` (Groq) | `local` (Ollama) | `premium` (Anthropic) | `hybrid` |
 |---|---|---|---|---|
-| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-opus-4-8` | `llama-3.3-70b-versatile` |
-| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` | `claude-opus-4-8` | **`claude-opus-4-8`** |
-| Audit | `llama-3.1-8b-instant` | `phi4:latest` | `claude-haiku-4-5-20251001` | `llama-3.1-8b-instant` |
+| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` | `llama-3.3-70b-versatile` | **`llama-3.3-70b-versatile`** |
+| Audit | `llama-3.1-8b-instant` | `phi4:latest` | `llama-3.1-8b-instant` | `llama-3.1-8b-instant` |
 
 ---
 
@@ -140,13 +140,13 @@ MODEL_MAP = {
         "audit":              "phi4:latest",
     },
     LLMProvider.PREMIUM: {
-        "orchestrator":       "claude-opus-4-8",
-        "customer_profile":   "claude-sonnet-4-6",
-        "account_profile":    "claude-sonnet-4-6",
-        "arrears_prediction": "claude-sonnet-4-6",
-        "dispute":            "claude-sonnet-4-6",
-        "nba":                "claude-opus-4-8",
-        "audit":              "claude-haiku-4-5-20251001",
+        "orchestrator":       "llama-3.3-70b-versatile",
+        "customer_profile":   "llama-3.3-70b-versatile",
+        "account_profile":    "llama-3.3-70b-versatile",
+        "arrears_prediction": "llama-3.3-70b-versatile",
+        "dispute":            "llama-3.3-70b-versatile",
+        "nba":                "llama-3.3-70b-versatile",
+        "audit":              "llama-3.1-8b-instant",
     },
     LLMProvider.HYBRID: {
         "orchestrator":       "llama-3.3-70b-versatile",
@@ -154,7 +154,7 @@ MODEL_MAP = {
         "account_profile":    "llama-3.3-70b-versatile",
         "arrears_prediction": "llama-3.3-70b-versatile",
         "dispute":            "llama-3.3-70b-versatile",
-        "nba":                "claude-opus-4-8",          # Only Anthropic call
+        "nba":                "llama-3.3-70b-versatile",          # Only Anthropic call
         "audit":              "llama-3.1-8b-instant",
     },
 }
@@ -186,7 +186,7 @@ Before (Anthropic-only):
 ```python
 # Hard-coded to Anthropic
 client = anthropic.Anthropic()
-response = client.messages.create(model="claude-sonnet-4-6", ...)
+response = client.messages.create(model="llama-3.3-70b-versatile", ...)
 ```
 
 After (provider-agnostic via LangChain):

@@ -111,7 +111,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Manages the pipeline: triggers parallel/sequential agent runs, maintains shared state, handles retries and errors |
-| Model | `claude-opus-4-8` |
+| Model | `llama-3.3-70b-versatile` (Groq — free) |
 | Inputs | `customer_id`, `account_id`, trigger context |
 | Outputs | Final `CollectionWorkflowState` with all agent outputs populated |
 | Tools | `run_agent_parallel`, `run_agent_sequential`, `update_shared_state`, `request_human_review` |
@@ -121,7 +121,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Build a 360° customer profile covering identity, demographics, contact preferences, relationship history, and behavioural risk signals |
-| Model | `claude-sonnet-4-6` |
+| Model | `llama-3.3-70b-versatile` (Groq — free) |
 | Inputs | `customer_id` |
 | Outputs | `customer_profile`: name, contact channels, preferred contact time, relationship tenure, prior collection interactions, hardship indicators, risk segment (`low` / `medium` / `high` / `hardship`) |
 | Tools | `get_customer_demographics`, `get_contact_preferences`, `get_interaction_history`, `classify_risk_segment`, `detect_hardship_signals` |
@@ -131,7 +131,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Retrieve and summarise the full account snapshot — balances, delinquency status, product details, and payment history |
-| Model | `claude-sonnet-4-6` |
+| Model | `llama-3.3-70b-versatile` (Groq — free) |
 | Inputs | `account_id` |
 | Outputs | `account_profile`: outstanding balance, days past due (DPD), product type, payment history (last 12 months), account status (`current` / `delinquent` / `written-off` / `legal`), linked accounts, last payment date and amount |
 | Tools | `get_account_balance`, `get_delinquency_status`, `get_payment_history`, `get_linked_accounts`, `get_product_details` |
@@ -141,7 +141,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Analyse historical payment behaviour and account signals to forecast the customer's arrears trajectory and default probability over the next 30/60/90 days |
-| Model | `claude-sonnet-4-6` |
+| Model | `llama-3.3-70b-versatile` (Groq — free) |
 | Inputs | `account_profile` (payment history, DPD, balance), `customer_profile` (risk segment, hardship indicators) |
 | Outputs | `arrears_prediction`: current arrears band, predicted DPD at 30/60/90 days, arrears trajectory, default probability, predicted arrears amount, contributing risk factors, confidence score |
 | Tools | `analyse_payment_pattern`, `calculate_arrears_trajectory`, `predict_default_probability`, `estimate_future_arrears`, `identify_risk_factors` |
@@ -153,7 +153,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Identify open disputes, classify dispute type, retrieve resolution history, and flag any collection holds imposed by active disputes |
-| Model | `claude-sonnet-4-6` |
+| Model | `llama-3.3-70b-versatile` |
 | Inputs | `account_id`, `account_profile` (for status cross-check) |
 | Outputs | `dispute_summary`: active disputes (type, opened date, status), resolution history, `collection_hold: bool`, hold reason if applicable |
 | Tools | `get_active_disputes`, `get_dispute_history`, `classify_dispute_type`, `check_collection_hold_flag`, `get_resolution_timeline` |
@@ -164,7 +164,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Synthesise all four upstream outputs and recommend the single best next action, with urgency calibrated by arrears prediction |
-| Model | `claude-opus-4-8` (reasoning-intensive synthesis) |
+| Model | `llama-3.3-70b-versatile` (reasoning-intensive synthesis) |
 | Inputs | `customer_profile`, `account_profile`, `arrears_prediction`, `dispute_summary` |
 | Outputs | `nba_recommendation`: action type, channel, rationale, confidence score, alternative actions ranked |
 | Tools | `evaluate_action_eligibility`, `score_action_options`, `generate_recommendation_rationale`, `validate_against_policy` |
@@ -176,7 +176,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Property | Detail |
 |---|---|
 | Role | Produce a human-readable, structured audit trail of every agent decision, input, and output within the workflow run |
-| Model | `claude-haiku-4-5-20251001` (lightweight, high throughput) |
+| Model | `llama-3.1-8b-instant` (lightweight, high throughput) |
 | Inputs | Complete `CollectionWorkflowState` after all agents complete |
 | Outputs | Structured audit record: per-agent summary, decision lineage, timestamp, NBA rationale chain |
 | Tools | `log_agent_step`, `build_decision_lineage`, `generate_audit_report` |
@@ -257,13 +257,13 @@ Full strategy: [`docs/llm_provider_strategy.md`](docs/llm_provider_strategy.md)
 
 | Agent | `free_cloud` (Groq) | `local` (Ollama) | `premium` (Anthropic) | `hybrid` |
 |---|---|---|---|---|
-| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-opus-4-8` | `llama-3.3-70b-versatile` |
-| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` | `claude-sonnet-4-6` | `llama-3.3-70b-versatile` |
-| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` | `claude-opus-4-8` | **`claude-opus-4-8`** ← only Anthropic call |
-| Audit | `llama-3.1-8b-instant` | `phi4:latest` | `claude-haiku-4-5-20251001` | `llama-3.1-8b-instant` |
+| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
+| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` | `llama-3.3-70b-versatile` | **`llama-3.3-70b-versatile`** ← only Anthropic call |
+| Audit | `llama-3.1-8b-instant` | `phi4:latest` | `llama-3.1-8b-instant` | `llama-3.1-8b-instant` |
 
 #### Implementation: `LLMClientFactory`
 

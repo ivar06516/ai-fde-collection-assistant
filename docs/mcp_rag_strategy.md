@@ -14,7 +14,7 @@ The current agents call Python functions directly (e.g., `get_customer_demograph
 
 ### Step 2 — Why RAG Here?
 
-The current NBA Agent reasons over the four upstream profiles using only Claude Opus 4.8's training knowledge for policy and scoring. Three gaps exist:
+The current NBA Agent reasons over the four upstream profiles using only Groq Llama 3.3 70B's training knowledge for policy and scoring. Three gaps exist:
 
 | Gap | Problem | RAG Fix |
 |---|---|---|
@@ -263,7 +263,7 @@ client = anthropic.Anthropic()
 
 async def run_customer_profile_agent(customer_id: str) -> CustomerProfile:
     response = client.beta.messages.create(
-        model="claude-sonnet-4-6",
+        model="llama-3.3-70b-versatile",
         max_tokens=1024,
         mcp_servers=[
             {
@@ -537,7 +537,7 @@ Use the above context to inform your recommendation. Cite the relevant policy wh
 
     # ── LLM synthesis (Opus 4.8) ──────────────────────────────────────────────
     response = client.messages.create(
-        model="claude-opus-4-8",
+        model="llama-3.3-70b-versatile",
         system=enhanced_system_prompt,
         messages=[{"role": "user", "content": format_state_for_nba(state)}],
     )
@@ -610,7 +610,7 @@ Agent                 [MCP: crm-data]
            [MCP: policy-server, analytics-server]
            [RAG: policy_docs → Top 3 chunks     ]
            [RAG: historical_cases → Top 2 cases ]
-           [LLM: Claude Opus 4.8               ]
+           [LLM: Groq Llama 3.3 70B               ]
               │
               ▼
            Audit Agent

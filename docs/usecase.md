@@ -135,7 +135,7 @@ Every use case references specific sections of the project documents so that a r
 | Dimension | Reference | Detail |
 |---|---|---|
 | **Requirements** | §2.2.2 (Customer Profile Agent), §5.2 (`customers` + `interaction_history` tables), §6.1 Stage 1 | Agent definition, DB schema, pipeline position |
-| **Deployment** | Render.com (FastAPI + SQLite); Claude Sonnet 4.6 via Anthropic API | Agent runs in FastAPI service; queries local SQLite file |
+| **Deployment** | Render.com (FastAPI + SQLite); Groq Llama 3.3 70B via Anthropic API | Agent runs in FastAPI service; queries local SQLite file |
 | **Observability** | `agent_execution_duration_seconds{agent="customer_profile"}` histogram; `agent_started` + `agent_complete` log events; child span `stage1.customer_profile` in Tempo trace | Per-agent latency tracked. Trace shows this as a parallel sibling of Account Profile Agent |
 | **SRE** | Agent error rate SLO ≤ 2%; Alert: `agent_failed` log event triggers error-rate alert; Runbook §8.3 "LLM API timeout" | Risk: if Anthropic API is slow, Stage 1 is the bottleneck. Parallel execution with Account Profile mitigates partial slowness |
 
@@ -179,7 +179,7 @@ Every use case references specific sections of the project documents so that a r
 | Dimension | Reference | Detail |
 |---|---|---|
 | **Requirements** | §2.2.3 (Account Profile Agent), §5.2 (`accounts` + `payment_history` tables), §6.1 Stage 1 | Agent definition, DB schema |
-| **Deployment** | Render.com FastAPI + SQLite; Claude Sonnet 4.6 | Parallel execution with UC-002 in same service |
+| **Deployment** | Render.com FastAPI + SQLite; Groq Llama 3.3 70B | Parallel execution with UC-002 in same service |
 | **Observability** | `agent_execution_duration_seconds{agent="account_profile"}` histogram; `db_query_duration_seconds` histogram for payment history query (up to 18 rows per account); `stage1.account_profile` span in Tempo | DB query latency separately tracked. Long payment history queries are the most expensive DB call in the pipeline |
 | **SRE** | Agent error rate SLO ≤ 2%; `db_query_duration_seconds` alert if > 500ms (SQLite on Render should be < 50ms); Runbook §8.3 "SQLite locked" | SQLite single-writer constraint: Account and Customer Profile queries are read-only so they can run safely in parallel |
 
@@ -224,7 +224,7 @@ Every use case references specific sections of the project documents so that a r
 | Dimension | Reference | Detail |
 |---|---|---|
 | **Requirements** | §2.2.4 (Arrears Prediction Agent), §6.1 Stage 2, §10.2 Screen 3 Arrears Card, REQUIREMENTS.md Q8 (resolved — 3 chart types) | Agent definition, pipeline stage, UI chart specification |
-| **Deployment** | Render.com FastAPI; Claude Sonnet 4.6; no additional DB query (uses state from Stage 1) | Most compute-intensive Sonnet agent due to numerical pattern analysis |
+| **Deployment** | Render.com FastAPI; Groq Llama 3.3 70B; no additional DB query (uses state from Stage 1) | Most compute-intensive Sonnet agent due to numerical pattern analysis |
 | **Observability** | `arrears_trajectory_distribution{trajectory="deteriorating"}` counter; `agent_execution_duration_seconds{agent="arrears_prediction"}` histogram; `stage2.arrears_prediction` Tempo span; `arrears_trajectory` field in structured log | Business metric: trajectory distribution shows portfolio health trend over time. Grafana Dashboard 3 shows this as bar chart |
 | **SRE** | Agent error rate SLO ≤ 2%; p95 latency target < 3s for this agent (heaviest Sonnet call); Alert: NBA recommendation rate drops if this agent fails consistently | This agent's output is the primary NBA urgency signal — its failure degrades recommendation quality even if the pipeline completes |
 
@@ -269,7 +269,7 @@ Every use case references specific sections of the project documents so that a r
 | Dimension | Reference | Detail |
 |---|---|---|
 | **Requirements** | §2.2.5 (Dispute Agent), §5.2 (`disputes` table), §6.1 Stage 2, §6.2 Dispute Hold Path | Agent definition, DB schema, dispute hold pipeline path |
-| **Deployment** | Render.com FastAPI + SQLite `disputes` table; Claude Sonnet 4.6 | Fastest agent in Stage 2 (simple DB query + classification) |
+| **Deployment** | Render.com FastAPI + SQLite `disputes` table; Groq Llama 3.3 70B | Fastest agent in Stage 2 (simple DB query + classification) |
 | **Observability** | `dispute_hold_triggered_total` counter (key business metric); `agent_execution_duration_seconds{agent="dispute"}` histogram; `dispute_hold_triggered` WARNING log event; `stage2.dispute` Tempo span with `dispute.hold` attribute | Alert: if hold rate > 30% of runs over 1h, may indicate data issue (Observability doc §7) |
 | **SRE** | Agent error rate SLO ≤ 2%; **Hard reliability requirement**: dispute hold must never be missed — test UC-005 A1 path in every integration test run; Alert: if `dispute` agent fails, NBA must not be allowed to produce outbound contact recommendations | Single most critical compliance control in the pipeline. Failure here is a regulatory risk, not just an SRE metric |
 
@@ -291,7 +291,7 @@ Every use case references specific sections of the project documents so that a r
 |---|---|---|
 | 1 | Agent calls `evaluate_action_eligibility(state)` | Applies hard constraints: if `collection_hold = True`, remove all outbound contact actions from catalogue |
 | 2 | Agent applies arrears signal routing | `critical` trajectory or `default_probability > 0.85` → boost `escalate_to_legal`, `offer_settlement`; `improving` → boost `no_action_required`, `send_sms` |
-| 3 | Agent calls `score_action_options(state, eligible_actions)` | Claude Opus 4.8 reasons over full customer + account + arrears + dispute context to score each eligible action (0.0–1.0) |
+| 3 | Agent calls `score_action_options(state, eligible_actions)` | Groq Llama 3.3 70B reasons over full customer + account + arrears + dispute context to score each eligible action (0.0–1.0) |
 | 4 | Agent calls `generate_recommendation_rationale(top_action, state)` | Produces a 2–4 sentence human-readable rationale referencing specific state values (DPD, trajectory, contact preference, dispute status) |
 | 5 | Agent calls `validate_against_policy(recommendation)` | Final policy check — ensures action is in approved catalogue |
 | 6 | Agent returns `NBARecommendation` TypedDict | `action`, `channel`, `rationale`, `confidence_score`, `alternative_actions`, `blocked_by_dispute` written to `state.nba_recommendation` |
@@ -316,7 +316,7 @@ Every use case references specific sections of the project documents so that a r
 | Dimension | Reference | Detail |
 |---|---|---|
 | **Requirements** | §2.2.6 (NBA Agent), §2.2.6 NBA action catalogue (9 actions), §6.1 Stage 3, §6.2 Dispute Hold Path, §6.3 Parallel Execution, §10.2 Screen 3 NBA Card | Agent definition, action catalogue, hard constraints, UI card |
-| **Deployment** | Render.com FastAPI; **Claude Opus 4.8** (most powerful model, highest cost — justified by synthesis complexity); prompt caching on policy/constraint system prompt | Opus 4.8 is used only here and in the Orchestrator — highest cost per call |
+| **Deployment** | Render.com FastAPI; **Groq Llama 3.3 70B** (most powerful model, highest cost — justified by synthesis complexity); prompt caching on policy/constraint system prompt | Opus 4.8 is used only here and in the Orchestrator — highest cost per call |
 | **Observability** | `nba_action_recommended_total{action="initiate_call"}` counter (business metric); `agent_execution_duration_seconds{agent="nba"}` histogram (Stage 3 bottleneck); `stage3.nba` Tempo span with `nba.action` and `nba.confidence` attributes; `nba_recommended` INFO log event | Grafana Dashboard 2 shows NBA action distribution pie chart — key business intelligence for demo |
 | **SRE** | NBA recommendation rate SLO ≥ 98% of completed workflows; p95 latency for NBA agent ≤ 4s; Alert: NBA agent failure causes pipeline to return `human_review` status; Runbook §8.3 covers "LLM API timeout" | This is the most expensive and slowest agent. If the NBA agent fails repeatedly, error budget is consumed fastest |
 

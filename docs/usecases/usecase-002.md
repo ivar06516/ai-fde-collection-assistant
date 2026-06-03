@@ -10,7 +10,7 @@
 | **Priority** | P0 |
 | **Delivery Phase** | Phase 3 |
 | **Pipeline Stage** | Stage 1 — parallel with UC-003 |
-| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `claude-sonnet-4-6` (premium) |
+| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `llama-3.3-70b-versatile` (premium) |
 
 ---
 
@@ -98,6 +98,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §2.2.2 Customer Profile Agent, §5.2 `customers` + `interaction_history` schema, §6.1 Stage 1 |
-| **Deployment** | Render.com FastAPI + local SQLite; Anthropic API (`claude-sonnet-4-6`) |
+| **Deployment** | Render.com FastAPI + local SQLite; Anthropic API (`llama-3.3-70b-versatile`) |
 | **Observability** | `agent_execution_duration_seconds{agent="customer_profile"}` histogram; `agent_started` / `agent_complete` Loki events; `stage1.customer_profile` Tempo span |
 | **SRE** | Agent error rate SLO ≤ 2%; parallel with UC-003 — slowest Stage 1 agent becomes the bottleneck; if this agent fails, pipeline status = error |
