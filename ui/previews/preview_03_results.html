@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Collection Assistant — Results</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #000000;
+      --accent:       #A100FF;
+      --accent-light: #F9F0FF;
+      --success:      #16A34A;
+      --success-bg:   #F0FDF4;
+      --success-border:#BBF7D0;
+      --warning:      #D97706;
+      --warning-bg:   #FFFBEB;
+      --warning-border:#FDE68A;
+      --danger:       #DC2626;
+      --danger-bg:    #FEF2F2;
+      --danger-border:#FECACA;
+      --purple:       #A100FF;
+      --purple-bg:    #F9F0FF;
+      --bg:           #F2F2F2;
+      --card:         #FFFFFF;
+      --border:       #E0E0E0;
+      --text:         #000000;
+      --text-muted:   #666666;
+      --nba-gold:     #A100FF;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    nav {
+      height: 56px;
+      background: var(--primary);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 15px; font-weight: 600; }
+    .nav-divider { width:1px; height:18px; background:rgba(255,255,255,.25); margin:0 4px; }
+    .nav-app-name { color: rgba(255,255,255,.85); font-weight: 500; }
+    .nav-badge { background: #A100FF; color: #fff; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 4px; letter-spacing:.04em; }
+    .nav-right { color: rgba(255,255,255,.65); font-size: 13px; display: flex; gap: 16px; align-items: center; }
+    .nav-pill-success { background: #BBF7D0; color: var(--success); font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 4px; }
+
+    .page { max-width: 960px; margin: 0 auto; padding: 36px 16px 80px; }
+
+    /* ── Results header ── */
+    .results-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+    }
+    .results-header .left h2 { font-size: 20px; font-weight: 700; color: #000000; margin-bottom: 4px; }
+    .results-header .left p { font-size: 13px; color: var(--text-muted); }
+    .results-header .meta {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+    }
+    .results-header .wf-id { font-family: monospace; font-size: 12px; color: var(--text-muted); }
+    .results-header .elapsed { font-size: 13px; font-weight: 600; color: var(--text); }
+    .results-header .elapsed span { color: var(--success); }
+
+    /* ── Card base ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 22px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    }
+    .card-title {
+      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title .agent-tag {
+      font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    }
+    .tag-complete { background: #DCFCE7; color: var(--success); }
+
+    /* ── Grid ── */
+    .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 700px) { .cards-grid { grid-template-columns: 1fr; } }
+
+    /* ── Badges / pills ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
+    }
+    .badge-danger  { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-border); }
+    .badge-warning { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+    .badge-success { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+    .badge-blue    { background: var(--accent-light); color: var(--accent); border: 1px solid #DDB3FF; }
+    .badge-purple  { background: var(--purple-bg);  color: var(--purple);  border: 1px solid #DDD6FE; }
+
+    /* ─── CUSTOMER PROFILE CARD ─── */
+    .customer-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+    .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kv { display: flex; flex-direction: column; gap: 2px; }
+    .kv-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+    .kv-value { font-size: 13.5px; font-weight: 600; color: var(--text); }
+    .channels { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .channel-chip {
+      font-size: 12px; font-weight: 600; padding: 3px 10px;
+      border-radius: 6px; background: var(--accent-light); color: var(--accent);
+      border: 1px solid #BFDBFE;
+    }
+
+    /* ─── ACCOUNT PROFILE CARD ─── */
+    .account-hero { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+    .account-balance { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; }
+    .account-balance span { font-size: 15px; font-weight: 500; color: var(--text-muted); }
+    .dpd-chip {
+      background: var(--danger-bg); border: 1px solid var(--danger-border);
+      color: var(--danger); font-size: 13px; font-weight: 700;
+      padding: 4px 12px; border-radius: 8px;
+    }
+    .sparkline-wrap { margin-top: 12px; }
+    .sparkline-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+    .sparkline svg { display: block; }
+
+    /* ─── ARREARS PREDICTION CARD ─── */
+    .arrears-hero { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .arrears-trajectory-big {
+      font-size: 15px; font-weight: 800; color: var(--warning);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .arrears-trajectory-big .arrow { font-size: 20px; }
+
+    /* Chart pair layout */
+    .chart-pair {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;
+    }
+    .chart-box {
+      background: #FAFAFA; border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .chart-box-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-muted); margin-bottom: 4px; text-align: center;
+    }
+
+    /* Gauge SVG */
+    .gauge-wrap { display: flex; justify-content: center; }
+
+    /* DPD line chart */
+    .linechart-wrap { display: flex; flex-direction: column; }
+
+    /* Factor bar chart */
+    .factor-bars { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+    .factor-bar-row { display: flex; align-items: center; gap: 8px; }
+    .factor-bar-label {
+      font-size: 11px; font-weight: 500; color: var(--text); min-width: 152px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .factor-bar-track {
+      flex: 1; height: 8px; background: #EEEEEE; border-radius: 6px; overflow: hidden;
+    }
+    .factor-bar-fill { height: 100%; border-radius: 6px; }
+    .fill-high   { background: linear-gradient(90deg, #D97706, #DC2626); }
+    .fill-medium { background: linear-gradient(90deg, #D97706, #F59E0B); }
+    .fill-low    { background: linear-gradient(90deg, #A100FF, #D97706); }
+    .factor-bar-pct {
+      font-size: 11px; font-weight: 700; color: var(--text-muted);
+      min-width: 30px; text-align: right;
+    }
+
+    /* ─── DISPUTE CARD ─── */
+    .dispute-hero {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 9px;
+      background: var(--success-bg); border: 1px solid var(--success-border);
+      margin-bottom: 12px;
+    }
+    .dispute-icon { font-size: 22px; }
+    .dispute-hero-text .main { font-size: 14px; font-weight: 700; color: var(--success); }
+    .dispute-hero-text .sub { font-size: 12px; color: #166534; margin-top: 2px; }
+    .dispute-hold-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--border); }
+    .hold-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .hold-val { font-size: 13px; font-weight: 700; color: var(--success); }
+
+    /* ─── NBA CARD ─── */
+    .nba-card {
+      background: linear-gradient(135deg, #0A0A0A 0%, #1A001A 100%);
+      border: 2px solid #A100FF;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(30,58,95,.25);
+    }
+    .nba-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 6px; flex-wrap: wrap; gap: 10px;
+    }
+    .nba-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: #CC66FF;
+      margin-bottom: 8px;
+    }
+    .nba-action {
+      font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nba-action .action-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: rgba(255,255,255,.15);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .nba-channel {
+      background: rgba(255,255,255,.15); color: rgba(255,255,255,.9);
+      font-size: 13px; font-weight: 600; padding: 5px 14px;
+      border-radius: 20px; align-self: flex-start;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .nba-confidence {
+      margin: 14px 0 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .conf-label { font-size: 12px; color: rgba(255,255,255,.6); white-space: nowrap; }
+    .conf-bar-bg { flex: 1; height: 7px; background: rgba(255,255,255,.15); border-radius: 8px; overflow: hidden; }
+    .conf-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #7700CC, #CC66FF); width: 87%; }
+    .conf-pct { font-size: 13px; font-weight: 700; color: #CC66FF; white-space: nowrap; }
+    .nba-rationale {
+      font-size: 13.5px; line-height: 1.65; color: rgba(255,255,255,.85);
+      background: rgba(0,0,0,.25); border-left: 3px solid #A100FF;
+      padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 18px;
+    }
+    .nba-alternatives-label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+      color: rgba(255,255,255,.5); font-weight: 600; margin-bottom: 10px;
+    }
+    .alternatives { display: flex; gap: 10px; flex-wrap: wrap; }
+    .alt-chip {
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+      color: rgba(255,255,255,.8); font-size: 12.5px; font-weight: 600;
+      padding: 6px 14px; border-radius: 8px;
+    }
+    .alt-chip .alt-score { color: rgba(255,255,255,.5); font-weight: 400; font-size: 11.5px; margin-left: 4px; }
+
+    /* ─── AUDIT TRAIL ─── */
+    .audit-toggle {
+      width: 100%; padding: 13px 18px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px 10px 0 0;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; font-family: 'Inter', sans-serif;
+      font-size: 13.5px; font-weight: 600; color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .audit-toggle .left { display: flex; align-items: center; gap: 8px; }
+    .audit-toggle .chevron { color: var(--text-muted); font-size: 11px; transition: transform .2s; }
+    .audit-toggle[open] .chevron { transform: rotate(180deg); }
+    .audit-body {
+      background: var(--card); border: 1px solid var(--border);
+      border-top: none; border-radius: 0 0 10px 10px;
+      padding: 4px 0;
+    }
+
+    .audit-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 18px;
+      border-bottom: 1px solid #F8FAFC;
+    }
+    .audit-row:last-child { border-bottom: none; }
+    .audit-step-icon {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #DCFCE7; color: var(--success);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+    .audit-step-body { flex: 1; min-width: 0; }
+    .audit-step-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .audit-step-io { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+    .audit-step-io .io-key { font-weight: 600; color: var(--text); }
+    .audit-step-time { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+    .audit-step-tokens { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; text-align: right; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <span style="color:#A100FF;font-size:20px;font-weight:900;letter-spacing:-2px;line-height:1">&#9612;&#9612;</span>
+    <span style="font-weight:700;letter-spacing:.02em">Accenture</span>
+    <span class="nav-divider"></span>
+    <span class="nav-app-name">FDE Collection Assistant</span>
+    <span class="nav-badge">FDE PoC</span>
+  </div>
+  <div class="nav-right">
+    <span class="nav-pill-success">&#10003; Completed</span>
+    <span style="color:rgba(255,255,255,.5)">7.8s</span>
+  </div>
+</nav>
+
+<main class="page">
+
+  <!-- Results header -->
+  <div class="results-header">
+    <div class="left">
+      <h2>Analysis Complete</h2>
+      <p>CUST-001 &mdash; John Smith &nbsp;&#183;&nbsp; ACC-001 &mdash; Personal Loan &nbsp;&#183;&nbsp; New Delinquency</p>
+    </div>
+    <div class="meta">
+      <span class="wf-id">wf-abc12345</span>
+      <span class="elapsed">Total time: <span>7.8s</span></span>
+    </div>
+  </div>
+
+  <!-- ── 2×2 Agent output cards ── -->
+  <div class="cards-grid">
+
+    <!-- Customer Profile -->
+    <div class="card">
+      <div class="card-title">
+        Customer Profile
+        <span class="agent-tag tag-complete">&#10003; Agent 1</span>
+      </div>
+      <div class="customer-name">
+        John Smith
+        <span class="badge badge-danger">&#9679; HIGH RISK</span>
+      </div>
+      <div class="kv-grid">
+        <div class="kv">
+          <span class="kv-label">Segment</span>
+          <span class="kv-value">Avoidant</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Best Contact Time</span>
+          <span class="kv-value">Morning</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Relationship</span>
+          <span class="kv-value">4 yrs 2 mo</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Prior Collections</span>
+          <span class="kv-value">2 interactions</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Hardship Flags</span>
+          <span class="kv-value">None</span>
+        </div>
+      </div>
+      <div class="channels">
+        <span class="channel-chip">&#128241; Mobile</span>
+        <span class="channel-chip">&#9993; Email</span>
+      </div>
+    </div>
+
+    <!-- Account Profile -->
+    <div class="card">
+      <div class="card-title">
+        Account Profile
+        <span class="agent-tag tag-complete">&#10003; Agent 2</span>
+      </div>
+      <div class="account-hero">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;font-weight:500;">Outstanding Balance</div>
+          <div class="account-balance">$2,850<span>.00</span></div>
+        </div>
+        <div class="dpd-chip">DPD 45</div>
+        <span class="badge badge-warning">&#9888; DELINQUENT</span>
+      </div>
+      <div class="kv-grid" style="margin-bottom:12px">
+        <div class="kv">
+          <span class="kv-label">Product</span>
+          <span class="kv-value">Personal Loan</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Last Payment</span>
+          <span class="kv-value">$120 — Apr 10</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Account Status</span>
+          <span class="kv-value" style="color:var(--warning)">Delinquent</span>
+        </div>
+        <div class="kv">
+          <span class="kv-label">Linked Accounts</span>
+          <span class="kv-value">1</span>
+        </div>
+      </div>
+      <div class="sparkline-wrap">
+        <div class="sparkline-label">Payment history (12 months)</div>
+        <div class="sparkline">
+          <svg width="100%" height="38" viewBox="0 0 280 38" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2563EB" stop-opacity=".25"/>
+                <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- bars: on-time = green, missed = red -->
+            <rect x="0"   y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="22"  y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="44"  y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="66"  y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="88"  y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="110" y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="132" y="6"  width="18" height="32" rx="3" fill="#16A34A" opacity=".7"/>
+            <rect x="154" y="12" width="18" height="26" rx="3" fill="#D97706" opacity=".8"/>
+            <rect x="176" y="18" width="18" height="20" rx="3" fill="#DC2626" opacity=".85"/>
+            <rect x="198" y="22" width="18" height="16" rx="3" fill="#DC2626" opacity=".9"/>
+            <rect x="220" y="24" width="18" height="14" rx="3" fill="#DC2626"/>
+            <rect x="242" y="26" width="18" height="12" rx="3" fill="#DC2626"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Arrears Prediction -->
+    <div class="card">
+      <div class="card-title">
+        Arrears Prediction
+        <span class="agent-tag tag-complete">&#10003; Agent 3</span>
+      </div>
+      <!-- Header row: trajectory + band -->
+      <div class="arrears-hero">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Trajectory</div>
+          <div class="arrears-trajectory-big">
+            <span class="arrow">&#8599;</span>DETERIORATING
+          </div>
+        </div>
+        <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+          <span class="badge badge-warning">Band: 31–60 days</span>
+          <span style="font-size:11px;color:var(--text-muted);">Confidence: <strong style="color:var(--text)">82%</strong></span>
+        </div>
+      </div>
+
+      <!-- Chart 1 + Chart 2 side by side -->
+      <div class="chart-pair">
+
+        <!-- Chart 1: Semicircle Gauge — Default Probability -->
+        <div class="chart-box">
+          <div class="chart-box-label">Default Probability</div>
+          <div class="gauge-wrap">
+            <svg viewBox="0 0 200 115" width="100%" style="max-height:105px">
+              <defs>
+                <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%"   stop-color="#16A34A"/>
+                  <stop offset="45%"  stop-color="#D97706"/>
+                  <stop offset="100%" stop-color="#DC2626"/>
+                </linearGradient>
+              </defs>
+              <!-- Background track -->
+              <path d="M 20 100 A 80 80 0 0 1 180 100"
+                    fill="none" stroke="#E0E0E0" stroke-width="16" stroke-linecap="round"/>
+              <!-- Filled arc: 78% of π×80 = 251.3 → 196 -->
+              <path d="M 20 100 A 80 80 0 0 1 180 100"
+                    fill="none" stroke="url(#gauge-grad)" stroke-width="16" stroke-linecap="round"
+                    stroke-dasharray="196 251.3"/>
+              <!-- Needle tick at 78% -->
+              <!-- 78% of 180° = 140.4° from left → angle from horizontal = 180 - 140.4 = 39.6° -->
+              <!-- Needle tip: cx + r*cos(39.6°×π/180), cy - r*sin(39.6°×π/180) ≈ 100+80×0.77, 100-80×0.637 = 161.6, 49.0 -->
+              <line x1="100" y1="100" x2="162" y2="50"
+                    stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>
+              <circle cx="100" cy="100" r="5" fill="#DC2626"/>
+              <!-- Center text -->
+              <text x="100" y="88" text-anchor="middle"
+                    font-family="Inter,sans-serif" font-size="28" font-weight="800" fill="#DC2626">78%</text>
+              <!-- Scale labels -->
+              <text x="14"  y="112" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#999">0%</text>
+              <text x="100" y="112" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#999">50%</text>
+              <text x="186" y="112" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#999">100%</text>
+            </svg>
+          </div>
+          <div style="text-align:center;font-size:10px;color:var(--danger);font-weight:700;margin-top:2px;">HIGH RISK</div>
+        </div>
+
+        <!-- Chart 2: Area Line Chart — DPD Trajectory -->
+        <div class="chart-box">
+          <div class="chart-box-label">DPD Forecast (days)</div>
+          <svg viewBox="0 0 200 95" width="100%" style="max-height:110px">
+            <defs>
+              <linearGradient id="area-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stop-color="#DC2626" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#DC2626" stop-opacity="0.0"/>
+              </linearGradient>
+              <!-- Horizontal gridlines -->
+            </defs>
+            <!-- Gridlines -->
+            <line x1="18" y1="16" x2="192" y2="16" stroke="#E8E8E8" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="18" y1="37" x2="192" y2="37" stroke="#E8E8E8" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="18" y1="58" x2="192" y2="58" stroke="#E8E8E8" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="18" y1="74" x2="192" y2="74" stroke="#CCCCCC" stroke-width="1"/>
+            <!-- Area fill under line: points (18,69)(74,57)(130,40)(186,20) -->
+            <path d="M 18,69 L 74,57 L 130,40 L 186,20 L 186,74 L 18,74 Z"
+                  fill="url(#area-grad)"/>
+            <!-- Line -->
+            <path d="M 18,69 L 74,57 L 130,40 L 186,20"
+                  fill="none" stroke="#DC2626" stroke-width="2.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Data point dots -->
+            <circle cx="18"  cy="69" r="4" fill="#D97706" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="74"  cy="57" r="4" fill="#DC2626" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="130" cy="40" r="4" fill="#DC2626" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="186" cy="20" r="4" fill="#DC2626" stroke="#fff" stroke-width="1.5"/>
+            <!-- Value labels above each dot -->
+            <text x="18"  y="63" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#D97706">45</text>
+            <text x="74"  y="51" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#DC2626">55</text>
+            <text x="130" y="34" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#DC2626">68</text>
+            <text x="186" y="14" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" font-weight="700" fill="#DC2626">82</text>
+            <!-- X-axis labels -->
+            <text x="18"  y="84" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#666">Now</text>
+            <text x="74"  y="84" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#666">+30d</text>
+            <text x="130" y="84" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#666">+60d</text>
+            <text x="186" y="84" text-anchor="middle" font-family="Inter,sans-serif" font-size="9" fill="#666">+90d</text>
+          </svg>
+        </div>
+
+      </div><!-- /chart-pair -->
+
+      <!-- Chart 3: Contributing Factors Horizontal Bar Chart -->
+      <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">
+        Contributing Risk Factors
+      </div>
+      <div class="factor-bars">
+        <div class="factor-bar-row">
+          <span class="factor-bar-label">missed_3_consecutive</span>
+          <div class="factor-bar-track">
+            <div class="factor-bar-fill fill-high" style="width:45%"></div>
+          </div>
+          <span class="factor-bar-pct">45%</span>
+        </div>
+        <div class="factor-bar-row">
+          <span class="factor-bar-label">balance_growth</span>
+          <div class="factor-bar-track">
+            <div class="factor-bar-fill fill-medium" style="width:30%"></div>
+          </div>
+          <span class="factor-bar-pct">30%</span>
+        </div>
+        <div class="factor-bar-row">
+          <span class="factor-bar-label">avg_payment_declining</span>
+          <div class="factor-bar-track">
+            <div class="factor-bar-fill fill-low" style="width:25%"></div>
+          </div>
+          <span class="factor-bar-pct">25%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dispute Summary -->
+    <div class="card">
+      <div class="card-title">
+        Dispute Summary
+        <span class="agent-tag tag-complete">&#10003; Agent 4</span>
+      </div>
+      <div class="dispute-hero">
+        <div class="dispute-icon">&#9989;</div>
+        <div class="dispute-hero-text">
+          <div class="main">No Active Disputes</div>
+          <div class="sub">Collection actions are permitted on this account</div>
+        </div>
+      </div>
+      <div class="dispute-hold-row">
+        <span class="hold-label">Collection Hold</span>
+        <span class="hold-val">&#10003; Not Held</span>
+      </div>
+      <div class="dispute-hold-row">
+        <span class="hold-label">Last Resolved Dispute</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text-muted)">Billing error — Nov 2024</span>
+      </div>
+      <div class="dispute-hold-row">
+        <span class="hold-label">Resolution History</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">1 dispute, resolved</span>
+      </div>
+    </div>
+
+  </div><!-- /cards-grid -->
+
+  <!-- ── NBA Recommendation ── -->
+  <div class="nba-card">
+    <div class="nba-eyebrow">&#11088; Next Best Action</div>
+
+    <div class="nba-header">
+      <div>
+        <div class="nba-action">
+          <div class="action-icon">&#128222;</div>
+          INITIATE CALL
+        </div>
+      </div>
+      <div class="nba-channel">&#128241; Mobile &nbsp;&middot;&nbsp; Morning</div>
+    </div>
+
+    <div class="nba-confidence">
+      <span class="conf-label">Confidence</span>
+      <div class="conf-bar-bg"><div class="conf-bar-fill"></div></div>
+      <span class="conf-pct">87%</span>
+    </div>
+
+    <div class="nba-rationale">
+      DPD 45 with a deteriorating arrears trajectory and 78% default probability warrants
+      direct contact before the account crosses the 60-day escalation threshold. No active
+      dispute or collection hold. Customer John Smith is reachable by mobile and prefers
+      morning contact. A phone call offers the highest probability of agreeing a payment
+      arrangement at this stage.
+    </div>
+
+    <div class="nba-alternatives-label">Alternative actions considered</div>
+    <div class="alternatives">
+      <div class="alt-chip">Send SMS <span class="alt-score">71%</span></div>
+      <div class="alt-chip">Offer Payment Plan <span class="alt-score">65%</span></div>
+      <div class="alt-chip">Send Email <span class="alt-score">48%</span></div>
+    </div>
+  </div>
+
+  <!-- ── Audit Trail ── -->
+  <details style="margin-bottom: 20px;">
+    <summary class="audit-toggle">
+      <span class="left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:#64748B">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" stroke="#64748B" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        Full Audit Trail &nbsp;
+        <span style="color:#64748B;font-weight:400;font-size:12px;">wf-abc12345 &middot; 5 agents &middot; 7.8s</span>
+      </span>
+      <span class="chevron">&#9660;</span>
+    </summary>
+
+    <div class="audit-body">
+
+      <div class="audit-row">
+        <div class="audit-step-icon">1</div>
+        <div class="audit-step-body">
+          <div class="audit-step-name">Customer Profile Agent</div>
+          <div class="audit-step-io">
+            <span class="io-key">In:</span> customer_id=CUST-001 &nbsp;|&nbsp;
+            <span class="io-key">Out:</span> risk_segment=high, segment=avoidant, channels=[mobile, email], hardship=none
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="audit-step-time">1.2s</div>
+          <div class="audit-step-tokens">&#8593; 312 &nbsp; &#8595; 189 tokens</div>
+        </div>
+      </div>
+
+      <div class="audit-row">
+        <div class="audit-step-icon">2</div>
+        <div class="audit-step-body">
+          <div class="audit-step-name">Account Profile Agent</div>
+          <div class="audit-step-io">
+            <span class="io-key">In:</span> account_id=ACC-001 &nbsp;|&nbsp;
+            <span class="io-key">Out:</span> DPD=45, status=delinquent, balance=$2,850, last_payment=$120 Apr-10
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="audit-step-time">0.9s</div>
+          <div class="audit-step-tokens">&#8593; 278 &nbsp; &#8595; 224 tokens</div>
+        </div>
+      </div>
+
+      <div class="audit-row">
+        <div class="audit-step-icon">3</div>
+        <div class="audit-step-body">
+          <div class="audit-step-name">Arrears Prediction Agent</div>
+          <div class="audit-step-io">
+            <span class="io-key">In:</span> payment_history (12m), risk_segment=high &nbsp;|&nbsp;
+            <span class="io-key">Out:</span> trajectory=deteriorating, default_prob=0.78, DPD+30=55, +60=68, +90=82
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="audit-step-time">2.1s</div>
+          <div class="audit-step-tokens">&#8593; 510 &nbsp; &#8595; 342 tokens</div>
+        </div>
+      </div>
+
+      <div class="audit-row">
+        <div class="audit-step-icon">4</div>
+        <div class="audit-step-body">
+          <div class="audit-step-name">Dispute Agent</div>
+          <div class="audit-step-io">
+            <span class="io-key">In:</span> account_id=ACC-001, status=delinquent &nbsp;|&nbsp;
+            <span class="io-key">Out:</span> active_disputes=0, collection_hold=false
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="audit-step-time">0.7s</div>
+          <div class="audit-step-tokens">&#8593; 198 &nbsp; &#8595; 112 tokens</div>
+        </div>
+      </div>
+
+      <div class="audit-row">
+        <div class="audit-step-icon">5</div>
+        <div class="audit-step-body">
+          <div class="audit-step-name">NBA Agent</div>
+          <div class="audit-step-io">
+            <span class="io-key">In:</span> all 4 profiles &nbsp;|&nbsp;
+            <span class="io-key">Out:</span> action=initiate_call, channel=mobile, confidence=0.87, rationale generated
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="audit-step-time">2.4s</div>
+          <div class="audit-step-tokens">&#8593; 824 &nbsp; &#8595; 487 tokens</div>
+        </div>
+      </div>
+
+      <div class="audit-row" style="background:#F8FAFC">
+        <div class="audit-step-icon" style="background:#DBEAFE;color:#2563EB;">6</div>
+        <div class="audit-step-body">
+          <div class="audit-step-name">Audit Agent</div>
+          <div class="audit-step-io">
+            <span class="io-key">In:</span> full CollectionWorkflowState &nbsp;|&nbsp;
+            <span class="io-key">Out:</span> audit record written, decision lineage: 5 steps
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="audit-step-time">0.5s</div>
+          <div class="audit-step-tokens">&#8593; 412 &nbsp; &#8595; 156 tokens</div>
+        </div>
+      </div>
+
+    </div><!-- /audit-body -->
+  </details>
+
+</main>
+
+<script>
+  // Keep details/summary styled properly
+  document.querySelectorAll('details').forEach(d => {
+    d.addEventListener('toggle', () => {
+      const chevron = d.querySelector('.chevron');
+      if (chevron) chevron.style.transform = d.open ? 'rotate(180deg)' : '';
+    });
+  });
+</script>
+</body>
+</html>

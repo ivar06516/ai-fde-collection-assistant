@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Collection Assistant — Execution</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:      #000000;
+      --accent:       #A100FF;
+      --accent-light: #F9F0FF;
+      --success:      #16A34A;
+      --success-bg:   #F0FDF4;
+      --warning:      #D97706;
+      --danger:       #DC2626;
+      --bg:           #F2F2F2;
+      --card:         #FFFFFF;
+      --border:       #E0E0E0;
+      --text:         #000000;
+      --text-muted:   #666666;
+      --waiting:      #999999;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    nav {
+      height: 56px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 10px;
+      color: #fff; font-size: 15px; font-weight: 600;
+    }
+    .nav-divider { width:1px; height:18px; background:rgba(255,255,255,.25); margin:0 4px; }
+    .nav-app-name { color: rgba(255,255,255,.85); font-weight: 500; }
+    .nav-badge {
+      background: #A100FF;
+      color: #fff; font-size: 11px; font-weight: 600;
+      padding: 2px 9px; border-radius: 4px; letter-spacing:.04em;
+    }
+    .nav-right { color: rgba(255,255,255,.65); font-size: 13px; display: flex; gap: 16px; }
+
+    .page { max-width: 680px; margin: 0 auto; padding: 40px 16px 80px; }
+
+    /* ── Run context banner ── */
+    .run-banner {
+      background: #000000;
+      border-radius: 10px;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .run-banner .left { display: flex; flex-direction: column; gap: 3px; }
+    .run-banner .run-title { color: #fff; font-size: 15px; font-weight: 600; }
+    .run-banner .run-meta { color: rgba(255,255,255,.6); font-size: 12.5px; }
+    .run-banner .run-meta span { color: rgba(255,255,255,.85); font-weight: 500; margin-left: 4px; }
+    .run-banner .wf-id {
+      background: rgba(255,255,255,.12);
+      color: rgba(255,255,255,.7);
+      font-size: 11.5px; font-family: monospace;
+      padding: 4px 10px; border-radius: 5px;
+      white-space: nowrap;
+    }
+
+    /* ── Overall progress ── */
+    .progress-wrap { margin-bottom: 28px; }
+    .progress-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .progress-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+    .progress-pct { font-size: 13px; font-weight: 700; color: var(--accent); }
+    .progress-bar-bg {
+      height: 8px; background: var(--border); border-radius: 8px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 8px;
+      background: linear-gradient(90deg, #7700CC, #A100FF);
+      width: 62%;
+      transition: width .4s ease;
+    }
+    .progress-eta {
+      font-size: 12px; color: var(--text-muted); text-align: right; margin-top: 5px;
+    }
+
+    /* ── Pipeline card ── */
+    .pipeline-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 6px rgba(0,0,0,.06);
+    }
+
+    /* ── Stage group ── */
+    .stage-group { padding: 18px 22px; }
+    .stage-group + .stage-group {
+      border-top: 1px solid var(--border);
+    }
+    .stage-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .stage-title {
+      font-size: 12px; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .stage-tag {
+      font-size: 11px; font-weight: 600; padding: 2px 9px;
+      border-radius: 20px; letter-spacing: .04em;
+    }
+    .tag-parallel { background: #F3E8FF; color: #A100FF; }
+    .tag-sequential { background: #FEF3C7; color: #92400E; }
+
+    /* ── Agent row ── */
+    .agent-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      transition: background .15s;
+    }
+    .agent-row + .agent-row { margin-top: 6px; }
+
+    /* Status variants */
+    .agent-row.complete { background: var(--success-bg); }
+    .agent-row.running  { background: #F9F0FF; }
+    .agent-row.waiting  { background: #F8FAFC; }
+
+    /* Icon */
+    .agent-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+    .icon-complete { background: #DCFCE7; }
+    .icon-running  { background: #EDD9FF; }
+    .icon-waiting  { background: #F1F5F9; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid #DDB3FF;
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    /* Pulse dots for running */
+    @keyframes pulse-dot { 0%,100% { opacity:.3; } 50% { opacity:1; } }
+    .pulse-dot {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #A100FF;
+      animation: pulse-dot 1.2s infinite;
+    }
+    .pulse-dot:nth-child(2) { animation-delay: .2s; }
+    .pulse-dot:nth-child(3) { animation-delay: .4s; }
+
+    .agent-name {
+      flex: 1;
+      font-size: 13.5px; font-weight: 600; color: var(--text);
+    }
+    .agent-stage-label { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+    .agent-elapsed {
+      font-size: 12px; font-weight: 500; color: var(--text-muted);
+      min-width: 38px; text-align: right;
+    }
+    .agent-status-label {
+      font-size: 11.5px; font-weight: 600; padding: 3px 9px;
+      border-radius: 20px; min-width: 74px; text-align: center;
+    }
+    .lbl-complete { background: #DCFCE7; color: var(--success); }
+    .lbl-running  { background: #EDD9FF; color: var(--accent); }
+    .lbl-waiting  { background: #F1F5F9; color: var(--waiting); }
+
+    /* Running dots row */
+    .running-dots { display: flex; gap: 3px; align-items: center; }
+
+    /* ── Stage 3 dim line ── */
+    .waiting-line {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 8px; background: #F8FAFC;
+    }
+    .waiting-line + .waiting-line { margin-top: 6px; }
+    .waiting-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #F1F5F9; border: 1.5px dashed #CBD5E1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--waiting);
+    }
+    .waiting-name { font-size: 13.5px; font-weight: 600; color: var(--waiting); flex: 1; }
+    .waiting-lbl {
+      font-size: 11.5px; font-weight: 500; color: #94A3B8;
+      background: #F1F5F9; padding: 3px 9px; border-radius: 20px;
+    }
+
+    /* ── Token counter ── */
+    .token-row {
+      padding: 12px 22px;
+      background: #F8FAFC;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 20px;
+      flex-wrap: wrap;
+    }
+    .token-item { display: flex; flex-direction: column; gap: 1px; }
+    .token-label { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+    .token-value { font-size: 13px; font-weight: 700; color: var(--text); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <span style="color:#A100FF;font-size:20px;font-weight:900;letter-spacing:-2px;line-height:1">&#9612;&#9612;</span>
+    <span style="font-weight:700;letter-spacing:.02em">Accenture</span>
+    <span class="nav-divider"></span>
+    <span class="nav-app-name">FDE Collection Assistant</span>
+    <span class="nav-badge">FDE PoC</span>
+  </div>
+  <div class="nav-right">
+    <span>Stage 2 of 3</span>
+  </div>
+</nav>
+
+<main class="page">
+
+  <!-- Run context banner -->
+  <div class="run-banner">
+    <div class="left">
+      <span class="run-title">Running analysis&hellip;</span>
+      <span class="run-meta">
+        Customer <span>CUST-001 — John Smith</span> &nbsp;&middot;&nbsp;
+        Account <span>ACC-001 — Personal Loan</span> &nbsp;&middot;&nbsp;
+        Trigger <span>New Delinquency</span>
+      </span>
+    </div>
+    <span class="wf-id">wf-abc12345</span>
+  </div>
+
+  <!-- Overall progress -->
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <span class="progress-label">Overall pipeline progress</span>
+      <span class="progress-pct">62%</span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill"></div>
+    </div>
+    <p class="progress-eta">~4 seconds remaining</p>
+  </div>
+
+  <!-- Pipeline card -->
+  <div class="pipeline-card">
+
+    <!-- Stage 1 — both complete -->
+    <div class="stage-group">
+      <div class="stage-header">
+        <span class="stage-title">Stage 1 &mdash; Data Collection</span>
+        <span class="stage-tag tag-parallel">Parallel</span>
+      </div>
+
+      <div class="agent-row complete">
+        <div class="agent-icon icon-complete">&#10003;</div>
+        <div style="flex:1">
+          <div class="agent-name">Customer Profile Agent</div>
+        </div>
+        <span class="agent-elapsed">1.2s</span>
+        <span class="agent-status-label lbl-complete">Complete</span>
+      </div>
+
+      <div class="agent-row complete">
+        <div class="agent-icon icon-complete">&#10003;</div>
+        <div style="flex:1">
+          <div class="agent-name">Account Profile Agent</div>
+        </div>
+        <span class="agent-elapsed">0.9s</span>
+        <span class="agent-status-label lbl-complete">Complete</span>
+      </div>
+    </div>
+
+    <!-- Stage 2 — one running, one complete -->
+    <div class="stage-group">
+      <div class="stage-header">
+        <span class="stage-title">Stage 2 &mdash; Analysis</span>
+        <span class="stage-tag tag-parallel">Parallel</span>
+      </div>
+
+      <div class="agent-row running">
+        <div class="agent-icon icon-running">
+          <div class="spinner"></div>
+        </div>
+        <div style="flex:1">
+          <div class="agent-name">Arrears Prediction Agent</div>
+        </div>
+        <span class="agent-elapsed">
+          <span class="running-dots">
+            <span class="pulse-dot"></span>
+            <span class="pulse-dot"></span>
+            <span class="pulse-dot"></span>
+          </span>
+        </span>
+        <span class="agent-status-label lbl-running">Running</span>
+      </div>
+
+      <div class="agent-row complete">
+        <div class="agent-icon icon-complete">&#10003;</div>
+        <div style="flex:1">
+          <div class="agent-name">Dispute Agent</div>
+        </div>
+        <span class="agent-elapsed">0.7s</span>
+        <span class="agent-status-label lbl-complete">Complete</span>
+      </div>
+    </div>
+
+    <!-- Stage 3 — waiting -->
+    <div class="stage-group">
+      <div class="stage-header">
+        <span class="stage-title">Stage 3 &mdash; Synthesis</span>
+        <span class="stage-tag tag-sequential">Sequential</span>
+      </div>
+
+      <div class="waiting-line">
+        <div class="waiting-dot">&#9711;</div>
+        <span class="waiting-name">Next Best Action (NBA) Agent</span>
+        <span class="waiting-lbl">Waiting</span>
+      </div>
+
+      <div class="waiting-line">
+        <div class="waiting-dot">&#9711;</div>
+        <span class="waiting-name">Audit Agent</span>
+        <span class="waiting-lbl">Waiting</span>
+      </div>
+    </div>
+
+    <!-- Token / stats footer -->
+    <div class="token-row">
+      <div class="token-item">
+        <span class="token-label">Agents Complete</span>
+        <span class="token-value">3 / 5</span>
+      </div>
+      <div class="token-item">
+        <span class="token-label">Elapsed</span>
+        <span class="token-value">3.4s</span>
+      </div>
+      <div class="token-item">
+        <span class="token-label">Input Tokens</span>
+        <span class="token-value">1,840</span>
+      </div>
+      <div class="token-item">
+        <span class="token-label">Output Tokens</span>
+        <span class="token-value">612</span>
+      </div>
+      <div class="token-item">
+        <span class="token-label">Model Calls</span>
+        <span class="token-value">3</span>
+      </div>
+    </div>
+
+  </div><!-- /pipeline-card -->
+
+</main>
+</body>
+</html>

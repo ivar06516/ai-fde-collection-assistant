@@ -25,7 +25,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 - Given a customer/account ID entered in the UI, run all five agents in the correct dependency order
 - Real-time agent execution progress streamed to the UI so the user sees each agent complete live
 - Results rendered as structured, visual cards — not raw JSON
-- Data sources (CRM, core banking, dispute management system) are stubbed with realistic mock data
+- Data sources (CRM, core banking, dispute management system) are represented by a SQLite DB seeded with ~100 realistic synthetic retail customers
 - NBA output and full audit trail surfaced in the UI — no post-hoc log digging required
 
 ---
@@ -125,7 +125,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Inputs | `customer_id` |
 | Outputs | `customer_profile`: name, contact channels, preferred contact time, relationship tenure, prior collection interactions, hardship indicators, risk segment (`low` / `medium` / `high` / `hardship`) |
 | Tools | `get_customer_demographics`, `get_contact_preferences`, `get_interaction_history`, `classify_risk_segment`, `detect_hardship_signals` |
-| Data sources (stubbed) | CRM, contact history store |
+| Data sources | SQLite DB — `customers` + `interaction_history` tables |
 
 #### 2.2.3 Account Profile Agent
 | Property | Detail |
@@ -135,7 +135,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Inputs | `account_id` |
 | Outputs | `account_profile`: outstanding balance, days past due (DPD), product type, payment history (last 12 months), account status (`current` / `delinquent` / `written-off` / `legal`), linked accounts, last payment date and amount |
 | Tools | `get_account_balance`, `get_delinquency_status`, `get_payment_history`, `get_linked_accounts`, `get_product_details` |
-| Data sources (stubbed) | Core banking system, loan management system |
+| Data sources | SQLite DB — `accounts` + `payment_history` tables |
 
 #### 2.2.4 Arrears Prediction Agent
 | Property | Detail |
@@ -145,7 +145,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Inputs | `account_profile` (payment history, DPD, balance), `customer_profile` (risk segment, hardship indicators) |
 | Outputs | `arrears_prediction`: current arrears band, predicted DPD at 30/60/90 days, arrears trajectory, default probability, predicted arrears amount, contributing risk factors, confidence score |
 | Tools | `analyse_payment_pattern`, `calculate_arrears_trajectory`, `predict_default_probability`, `estimate_future_arrears`, `identify_risk_factors` |
-| Data sources (stubbed) | Payment history from account profile (already in state), behavioural signals from customer profile |
+| Data sources | Derived from `account_profile` and `customer_profile` already in state — no additional DB query needed |
 | Arrears trajectory values | `improving` — DPD trending down; `stable` — no change; `deteriorating` — DPD trending up; `critical` — likely to reach write-off threshold |
 | Key output for NBA | `default_probability` (0.0–1.0) and `arrears_trajectory` directly influence NBA action urgency and action type |
 
@@ -157,7 +157,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 | Inputs | `account_id`, `account_profile` (for status cross-check) |
 | Outputs | `dispute_summary`: active disputes (type, opened date, status), resolution history, `collection_hold: bool`, hold reason if applicable |
 | Tools | `get_active_disputes`, `get_dispute_history`, `classify_dispute_type`, `check_collection_hold_flag`, `get_resolution_timeline` |
-| Data sources (stubbed) | Dispute management system, complaints register |
+| Data sources | SQLite DB — `disputes` table |
 | Key logic | If `collection_hold = true`, NBA Agent must **not** recommend any outbound contact action |
 
 #### 2.2.6 Next Best Action (NBA) Agent
@@ -215,10 +215,10 @@ pydantic>=2.9.0                # Data validation and shared state schemas
 pydantic-settings>=2.6.0       # Config management from env vars
 
 # Data & Storage
-sqlalchemy>=2.0.0              # ORM for audit logs and state persistence
+sqlalchemy>=2.0.0              # ORM for all DB access (SQLite for PoC)
 alembic>=1.14.0                # Database migrations
-redis>=5.2.0                   # Shared state cache between agents
-psycopg2-binary>=2.9.0         # PostgreSQL driver
+faker>=24.0.0                  # Synthetic data generation (seed_db.py)
+redis>=5.2.0                   # Shared state cache between agents (optional for PoC)
 
 # Observability & Tracing
 opentelemetry-sdk>=1.28.0      # Distributed tracing
@@ -292,10 +292,15 @@ ai-fde-collection-assistant/
 │       │   ├── collection_graph.py        # Main workflow graph (nodes + edges)
 │       │   └── state.py                   # CollectionWorkflowState TypedDict
 │       │
-│       ├── mock_data/                     # Stubbed data sources for PoC
-│       │   ├── customers.json
-│       │   ├── accounts.json
-│       │   └── disputes.json
+│       ├── db/                            # Database layer
+│       │   ├── __init__.py
+│       │   ├── models.py                  # SQLAlchemy ORM models (all 6 tables)
+│       │   ├── session.py                 # DB engine + session factory
+│       │   └── queries/                   # Query functions called by agent tools
+│       │       ├── customer_queries.py
+│       │       ├── account_queries.py
+│       │       ├── dispute_queries.py
+│       │       └── audit_queries.py
 │       │
 │       ├── models/                        # Pydantic schemas
 │       │   ├── __init__.py
@@ -317,6 +322,10 @@ ai-fde-collection-assistant/
 │       └── exceptions.py
 │
 ├── ui/                                    # Streamlit web UI
+│   ├── previews/                          # Static HTML design previews (open in browser)
+│   │   ├── preview_01_input.html          # Screen 1: Input form
+│   │   ├── preview_02_execution.html      # Screen 2: Live agent execution panel
+│   │   └── preview_03_results.html        # Screen 3+4: Results dashboard + audit trail
 │   ├── app.py                             # Main Streamlit entry point
 │   ├── pages/
 │   │   ├── 01_input.py                    # Customer/Account input form
@@ -343,14 +352,232 @@ ai-fde-collection-assistant/
 │   │   └── test_collection_pipeline.py
 │   └── conftest.py
 │
+├── scripts/
+│   ├── seed_db.py                         # Synthetic data generator + DB ingestion
+│   └── reset_db.py                        # Drop all tables and re-run seed
+│
+├── data/
+│   └── collection_assistant.db            # SQLite DB file (git-ignored, created by seed_db.py)
+│
+├── migrations/                            # Alembic migration scripts
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│
 └── docs/
     ├── agent_contracts.md
-    └── nba_action_catalogue.md
+    ├── nba_action_catalogue.md
+    └── data_schema.md                     # DB table descriptions + field glossary
 ```
 
 ---
 
-## 5. Shared State Schema
+## 5. Data Layer
+
+### 5.1 Database
+**SQLite** via SQLAlchemy ORM — lightweight, file-based, zero-server, Python-native. Ideal for a PoC that runs locally or on a laptop demo.
+
+| Property | Decision |
+|---|---|
+| Engine | SQLite 3 (built into Python stdlib) |
+| ORM | SQLAlchemy 2.0 (declarative models) |
+| File path | `data/collection_assistant.db` (created on first seed) |
+| Migrations | Alembic — schema versioned, forward-only for PoC |
+| Seeding | `scripts/seed_db.py` — generates and inserts all synthetic data |
+| UI trigger | "Data Management" panel in the Streamlit sidebar |
+
+---
+
+### 5.2 Database Schema
+
+```sql
+-- Customers master table
+CREATE TABLE customers (
+    customer_id       TEXT PRIMARY KEY,              -- e.g. CUST-001
+    first_name        TEXT NOT NULL,
+    last_name         TEXT NOT NULL,
+    date_of_birth     DATE NOT NULL,
+    age               INTEGER NOT NULL,
+    gender            TEXT,                          -- M | F | Other
+    email             TEXT,
+    mobile_number     TEXT,
+    city              TEXT,
+    state             TEXT,
+    postcode          TEXT,
+    employment_status TEXT,                          -- employed | unemployed | self_employed | retired
+    annual_income     REAL,
+    relationship_since DATE NOT NULL,               -- customer tenure start date
+    risk_segment      TEXT NOT NULL,                -- low | medium | high | hardship
+    preferred_channel TEXT DEFAULT 'mobile',        -- mobile | email | post
+    preferred_time    TEXT DEFAULT 'morning',       -- morning | afternoon | evening
+    hardship_flag     INTEGER DEFAULT 0,            -- 0 | 1
+    hardship_reason   TEXT,                         -- unemployment | medical | family | none
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Accounts
+CREATE TABLE accounts (
+    account_id           TEXT PRIMARY KEY,           -- e.g. ACC-001
+    customer_id          TEXT NOT NULL REFERENCES customers(customer_id),
+    product_type         TEXT NOT NULL,              -- personal_loan | credit_card | mortgage | auto_loan | overdraft
+    account_status       TEXT NOT NULL,              -- current | delinquent | legal | written_off | closed
+    outstanding_balance  REAL NOT NULL DEFAULT 0,
+    original_balance     REAL NOT NULL,
+    credit_limit         REAL,                       -- credit_card / overdraft only
+    interest_rate        REAL,
+    days_past_due        INTEGER DEFAULT 0,
+    delinquency_start    DATE,
+    last_payment_date    DATE,
+    last_payment_amount  REAL,
+    next_due_date        DATE,
+    next_due_amount      REAL,
+    opened_date          DATE NOT NULL,
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Monthly payment history (12+ months per account)
+CREATE TABLE payment_history (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id      TEXT NOT NULL REFERENCES accounts(account_id),
+    payment_month   TEXT NOT NULL,                   -- YYYY-MM
+    amount_due      REAL NOT NULL,
+    amount_paid     REAL NOT NULL DEFAULT 0,
+    on_time         INTEGER NOT NULL,                -- 1 = on time, 0 = late/missed
+    payment_date    DATE,
+    UNIQUE(account_id, payment_month)
+);
+
+-- Disputes
+CREATE TABLE disputes (
+    dispute_id       TEXT PRIMARY KEY,               -- e.g. DISP-001
+    account_id       TEXT NOT NULL REFERENCES accounts(account_id),
+    customer_id      TEXT NOT NULL REFERENCES customers(customer_id),
+    dispute_type     TEXT NOT NULL,                  -- billing_error | fraud_claim | identity_theft | service_dispute | payment_dispute
+    status           TEXT NOT NULL,                  -- open | under_review | resolved | escalated
+    opened_date      DATE NOT NULL,
+    resolved_date    DATE,
+    description      TEXT,
+    collection_hold  INTEGER DEFAULT 1,              -- 1 = blocks collection, 0 = does not
+    resolution       TEXT,                           -- upheld | rejected | partial | pending
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Prior collection interaction history
+CREATE TABLE interaction_history (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id      TEXT NOT NULL REFERENCES customers(customer_id),
+    account_id       TEXT NOT NULL REFERENCES accounts(account_id),
+    interaction_type TEXT NOT NULL,                  -- call | sms | email | letter | field_visit
+    interaction_date TIMESTAMP NOT NULL,
+    outcome          TEXT,                           -- contacted | no_answer | promise_to_pay | refused | payment_arranged
+    agent_notes      TEXT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- NBA workflow audit log (written by Audit Agent at end of each run)
+CREATE TABLE workflow_audit (
+    workflow_id      TEXT PRIMARY KEY,
+    customer_id      TEXT NOT NULL,
+    account_id       TEXT NOT NULL,
+    trigger_context  TEXT NOT NULL,
+    nba_action       TEXT,
+    nba_channel      TEXT,
+    nba_confidence   REAL,
+    nba_rationale    TEXT,
+    full_state_json  TEXT,                           -- full CollectionWorkflowState as JSON
+    status           TEXT NOT NULL,
+    total_ms         INTEGER,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+### 5.3 Synthetic Data Specification
+
+**Volume:** ~100 customers, ~150 accounts, ~2,000 payment history records, ~40 disputes, ~300 interaction records.
+
+**Generator:** `scripts/seed_db.py` uses [Faker](https://faker.readthedocs.io/) to produce realistic UK/AU/US retail names, addresses, and contact details. Every record is deterministic (fixed random seed) so the demo is reproducible.
+
+**Mandatory demo scenarios** (10 named customers, always present after seeding):
+
+| Scenario | Customer | Product | DPD | Status | Trajectory | Disputes | Notes |
+|---|---|---|---|---|---|---|---|
+| Standard case | John Smith | Personal Loan | 45 | Delinquent | Deteriorating | None | Core demo path |
+| Dispute hold | Sarah Jones | Credit Card | 30 | Delinquent | Stable | 1 open (billing) | `collection_hold=True` |
+| Critical arrears | Michael Tan | Mortgage | 92 | Delinquent | Critical | None | Default prob > 0.90 |
+| Improving customer | Emily Carter | Personal Loan | 12 | Delinquent | Improving | None | Low risk, paying down |
+| Hardship | Robert Davis | Personal Loan | 60 | Delinquent | Stable | None | `hardship_flag=True`, medical |
+| Written-off | Karen Wilson | Credit Card | 180 | Written Off | Critical | None | NBA → flag_for_writeoff |
+| Multiple disputes | David Brown | Auto Loan | 35 | Delinquent | Stable | 2 open | Double hold |
+| Legal action | Anna Zhang | Mortgage | 120 | Legal | Critical | None | NBA → escalate_to_legal |
+| Settlement candidate | James O'Brien | Personal Loan | 75 | Delinquent | Deteriorating | None | High balance, NBA → offer_settlement |
+| No action needed | Lisa Park | Credit Card | 0 | Current | Improving | None | Recently resolved via payment plan |
+
+**Remaining ~90 customers:** randomised across product types, DPD ranges, risk segments, employment statuses, and geographies to give the UI realistic variety in the dropdowns.
+
+**Realistic field ranges:**
+- Annual income: £18,000–£120,000 (normal distribution, median £42,000)
+- Outstanding balance: £500–£85,000 (varies by product)
+- Account tenure: 6 months–15 years
+- Payment history: last 18 months per account
+- Age: 22–72 years
+- Employment: 62% employed, 12% self-employed, 14% retired, 12% unemployed
+
+---
+
+### 5.4 Ingestion Script
+
+**File:** `scripts/seed_db.py`
+
+```python
+# Usage
+python scripts/seed_db.py               # seed with default 100 customers
+python scripts/seed_db.py --reset       # drop all tables, recreate, re-seed
+python scripts/seed_db.py --count 200   # seed with 200 customers
+python scripts/seed_db.py --scenarios-only  # seed only the 10 named demo scenarios
+```
+
+The script:
+1. Creates the SQLite DB at `data/collection_assistant.db` if not present
+2. Runs Alembic migrations to ensure schema is current
+3. Generates synthetic data using `Faker` with `seed(42)` for reproducibility
+4. Inserts 10 mandatory named scenarios first, then `--count` random customers
+5. Prints a summary table of inserted records by table
+
+---
+
+### 5.5 UI Data Management Panel
+
+Accessible from the **Streamlit sidebar** (not the main page). Collection agents do not need it during normal use — it is for demo setup and reset.
+
+```
+┌─── Data Management ──────────────────────────┐
+│  Database: data/collection_assistant.db       │
+│                                               │
+│  Customers     102  ●  Accounts       148    │
+│  Payment rows 1,987  ●  Disputes        38   │
+│  Interactions   312  ●  Audit runs       7   │
+│                                               │
+│  [ ▶ Seed Database ]  [ ⚠ Reset & Reseed ]   │
+│                                               │
+│  ▾ Preview records                            │
+│  [ Customers ▾ ]  [ Filter by segment ▾ ]    │
+│  ┌─────────┬───────────────┬──────────────┐  │
+│  │ ID      │ Name          │ Risk Segment │  │
+│  │ CUST-001│ John Smith    │ HIGH         │  │
+│  │ CUST-002│ Sarah Jones   │ MEDIUM       │  │
+│  └─────────┴───────────────┴──────────────┘  │
+└───────────────────────────────────────────────┘
+```
+
+- **Seed Database** — runs `seed_db.py` as a subprocess; shows progress spinner; refreshes stats on completion
+- **Reset & Reseed** — confirms with a warning dialog before dropping all data
+- **Preview records** — read-only table view with column sort and segment filter; useful for picking `customer_id` values to test
+
+---
+
+## 6. Shared State Schema
 
 All agents read from and write to a single `CollectionWorkflowState` object managed by LangGraph. Each agent writes only to its own output keys.
 
@@ -579,11 +806,15 @@ class Settings(BaseSettings):
 | UI Framework | **Streamlit** | Python-native; integrates directly with the agent backend; fast to build; real-time streaming support; professional look with minimal CSS |
 | Backend API | **FastAPI** | Async; native SSE support for streaming agent events to the UI |
 | Real-time transport | **Server-Sent Events (SSE)** | One-way push from server to browser; simpler than WebSocket for this use case |
-| Styling | Streamlit native + `st.markdown` custom CSS | Sufficient for PoC polish |
+| Styling | Streamlit native + `.streamlit/config.toml` + `st.markdown` custom CSS | Accenture/FDE theme applied globally |
+| Theme | **Generic Accenture / FDE theme** — no client branding | Purple (`#A100FF`) primary accent, black nav, white cards |
 
 ### 10.2 UI Screens
 
+> **HTML Previews** — Static design previews for all screens are in `ui/previews/`. Open in any browser to review layout and UX before development begins.
+
 #### Screen 1 — Input Panel
+**Preview file:** [`ui/previews/preview_01_input.html`](ui/previews/preview_01_input.html)
 The starting screen. Clean, minimal form.
 
 ```
@@ -608,6 +839,7 @@ The starting screen. Clean, minimal form.
 - Quick-load buttons populate the form with pre-built mock scenarios for demo purposes
 
 #### Screen 2 — Agent Execution Panel (live, appears on Run click)
+**Preview file:** [`ui/previews/preview_02_execution.html`](ui/previews/preview_02_execution.html)
 Real-time pipeline view. Each stage updates as SSE events arrive.
 
 ```
@@ -634,8 +866,9 @@ Real-time pipeline view. Each stage updates as SSE events arrive.
 - Progress bar shows overall pipeline completion
 - Stage labels make the parallel vs sequential structure visible to the demo audience
 
-#### Screen 3 — Results Dashboard (appears when pipeline completes)
-Full results in card layout. All four agent outputs + NBA recommendation visible at once.
+#### Screen 3 — Results Dashboard + Audit Trail (appears when pipeline completes)
+**Preview file:** [`ui/previews/preview_03_results.html`](ui/previews/preview_03_results.html)
+Full results in card layout. All four agent outputs + NBA recommendation visible at once. Audit trail is an expandable section at the bottom of this same page.
 
 ```
 ┌─────────────── CUSTOMER PROFILE ──────────────┐
@@ -652,12 +885,24 @@ Full results in card layout. All four agent outputs + NBA recommendation visible
 │  [Payment history sparkline ▁▂▄▆▃▁▁▁▁▁▁▁]     │
 └───────────────────────────────────────────────┘
 
-┌─────────────── ARREARS PREDICTION ────────────┐
-│  Trajectory: ↗ DETERIORATING                  │
-│  Default probability:  ████████░░  78%        │
-│  Predicted DPD:  30d→55  60d→68  90d→82       │
-│  Factors: missed_3_consecutive, balance_growth │
-└───────────────────────────────────────────────┘
+┌─────────────── ARREARS PREDICTION ──────────────────────────────────┐
+│  Trajectory: ↗ DETERIORATING              Band: 31–60 days          │
+│                                                                      │
+│  ┌──────────────────────────┐  ┌───────────────────────────────────┐ │
+│  │  Default Probability     │  │  DPD Forecast (days)              │ │
+│  │                          │  │                              • 82 │ │
+│  │        78%               │  │                        • 68       │ │
+│  │    [GAUGE DIAL]          │  │              • 55                 │ │
+│  │  ╰────────────╯          │  │  • 45  ░░░░░░░░░░░░░░░░░░░░░░░   │ │
+│  │    HIGH RISK             │  │  Now  +30d   +60d   +90d         │ │
+│  │  (needle → 78%)          │  │  [SVG area line chart]           │ │
+│  └──────────────────────────┘  └───────────────────────────────────┘ │
+│                                                                      │
+│  Contributing Risk Factors     [horizontal bar chart]               │
+│  missed_3_consecutive  ████████████████░░░░░  45%                   │
+│  balance_growth        ████████████░░░░░░░░░  30%                   │
+│  avg_payment_declining █████████░░░░░░░░░░░░  25%                   │
+└──────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────── DISPUTE SUMMARY ───────────────┐
 │  Active disputes: 0     Collection hold: ✅ NO │
@@ -681,7 +926,8 @@ Full results in card layout. All four agent outputs + NBA recommendation visible
 ▾ View Full Audit Trail
 ```
 
-#### Screen 4 — Audit Trail (expandable panel)
+#### Screen 4 — Audit Trail (expandable panel, part of Screen 3)
+**Preview file:** [`ui/previews/preview_03_results.html`](ui/previews/preview_03_results.html) — scroll to bottom and expand the audit section.
 Collapsible section below the results. Shows the decision lineage per agent.
 
 ```
@@ -705,7 +951,57 @@ Collapsible section below the results. Shows the decision lineage per agent.
           Generated: decision lineage record audit-xyz
 ```
 
-### 10.3 UX Principles
+### 10.3 Accenture / FDE Branding Spec
+
+**Resolved (Open Question #7): Generic Accenture/FDE theme — no client branding.**
+
+#### Colour Palette
+| Token | Hex | Usage |
+|---|---|---|
+| `--acn-purple` | `#A100FF` | Primary accent — buttons, active states, highlights, progress fills |
+| `--acn-black` | `#000000` | Navigation bar background, primary text headings |
+| `--acn-white` | `#FFFFFF` | Card backgrounds, page background |
+| `--acn-gray-light` | `#F2F2F2` | Page background, input fields, table zebra rows |
+| `--acn-gray-mid` | `#E0E0E0` | Borders, dividers |
+| `--acn-gray-text` | `#666666` | Secondary / muted text |
+| Risk — High | `#DC2626` | High risk badges, critical status |
+| Risk — Medium | `#D97706` | Medium risk, deteriorating trajectory |
+| Risk — Low | `#16A34A` | Low risk, improving trajectory, success states |
+| Risk — Hardship | `#7C3AED` | Hardship segment badge |
+
+#### Typography
+- **Font:** System sans-serif stack (`-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`)
+- **Headings:** Bold weight, black
+- **Body:** Regular weight, `#333333`
+- **Labels / caps:** 500 weight, `#666666`, `letter-spacing: 0.06em`
+
+#### Streamlit Theme Config (`.streamlit/config.toml`)
+```toml
+[theme]
+primaryColor        = "#A100FF"
+backgroundColor     = "#FFFFFF"
+secondaryBackgroundColor = "#F2F2F2"
+textColor           = "#000000"
+font                = "sans serif"
+```
+
+#### Header Identity
+```
+┌──────────────────────────────────────────────────────┐
+│  ▌▌  Accenture  │  FDE Collection Assistant  [FDE PoC]│
+└──────────────────────────────────────────────────────┘
+```
+- Black nav bar with the Accenture wordmark (text only, no image asset required)
+- Vertical purple bar (`▌▌`) before "Accenture" to reference the brand mark
+- `FDE PoC` badge in purple on black
+
+#### HTML Previews
+All three preview files in `ui/previews/` use the Accenture/FDE theme.
+See [`ui/previews/preview_01_input.html`](ui/previews/preview_01_input.html), [`preview_02_execution.html`](ui/previews/preview_02_execution.html), [`preview_03_results.html`](ui/previews/preview_03_results.html).
+
+---
+
+### 10.4 UX Principles
 - **No raw JSON exposed** — all agent outputs rendered as human-readable cards with labels and icons
 - **Progressive disclosure** — Input → Execution → Results → Audit Trail (each stage appears in sequence)
 - **Real-time feedback** — user sees agents completing live; not a spinner followed by a wall of text
@@ -713,7 +1009,7 @@ Collapsible section below the results. Shows the decision lineage per agent.
 - **Colour coding** — risk and status indicators use consistent colour: red = high/critical, amber = medium/deteriorating, green = low/improving
 - **Mobile-readable** — cards stack to single column on narrow screens
 
-### 10.4 Streamlit Implementation Notes
+### 10.5 Streamlit Implementation Notes
 - Use `st.status()` for real-time agent execution display
 - Use `st.metric()` for DPD, balance, default probability
 - Use `st.progress()` for overall pipeline progress
@@ -820,27 +1116,95 @@ Returns the full structured audit trail. Called by the UI when the user expands 
 |---|---|---|
 | Phase | Deliverable | Priority |
 |---|---|---|
-| Phase 1 | Project scaffold, `pyproject.toml`, config, `CollectionWorkflowState` schema, mock data JSON files | P0 |
-| Phase 2 | Customer Profile Agent + Account Profile Agent + stubbed tools | P0 |
-| Phase 3 | Arrears Prediction Agent — pattern analysis, trajectory, default probability | P0 |
-| Phase 4 | Dispute Agent + collection hold logic | P0 |
-| Phase 5 | NBA Agent with action catalogue, arrears-signal routing, and dispute hard constraints | P0 |
-| Phase 6 | Orchestrator Agent + LangGraph graph (Stage 1 → Stage 2 → Stage 3 wiring) | P0 |
-| Phase 7 | FastAPI backend — `POST /recommend`, `GET /stream` (SSE), `GET /audit` | P0 |
-| Phase 8 | Streamlit UI — Input form, live execution panel (SSE consumer), result cards, audit trail | P0 |
-| Phase 9 | Demo polish — quick-load scenarios, colour-coded risk badges, trajectory charts | P1 |
-| Phase 10 | Integration tests — happy path, dispute hold path, critical arrears path, all via UI | P1 |
-| Phase 11 | Observability: OTel tracing per agent call, structured logs | P2 |
+| Phase 1 | Project scaffold, `pyproject.toml`, config, `CollectionWorkflowState` schema | P0 |
+| Phase 2 | SQLite schema (6 tables), SQLAlchemy models, Alembic migration, `seed_db.py` with 10 named demo scenarios + ~90 random customers | P0 |
+| Phase 3 | Customer Profile Agent + Account Profile Agent — querying `customers`, `accounts`, `payment_history`, `interaction_history` tables | P0 |
+| Phase 4 | Arrears Prediction Agent — analysis over payment history from state | P0 |
+| Phase 5 | Dispute Agent — querying `disputes` table, collection hold logic | P0 |
+| Phase 6 | NBA Agent with action catalogue, arrears-signal routing, dispute hard constraints | P0 |
+| Phase 7 | Orchestrator Agent + LangGraph graph (Stage 1 → Stage 2 → Stage 3 wiring) | P0 |
+| Phase 8 | FastAPI backend — `POST /recommend`, `GET /stream` (SSE), `GET /audit` | P0 |
+| Phase 9 | Streamlit UI — Input form (populated from DB), live execution panel, result cards, audit trail, Data Management sidebar panel | P0 |
+| Phase 10 | Demo polish — quick-load scenarios, colour-coded badges, Plotly trajectory charts | P1 |
+| Phase 11 | Integration tests — all 10 named scenarios verified end-to-end via UI | P1 |
+| Phase 12 | Observability: OTel tracing per agent call, structured logs | P2 |
 
 ---
 
 ## 12. Open Questions / Decisions Required
 
-1. **Mock Data Fidelity** — How realistic should the stubbed customer/account/dispute data be? Should it cover edge cases (e.g., multiple active disputes, written-off accounts)?
+1. ~~**Mock Data Fidelity**~~ — **Resolved:** Synthetic data generated by script, ingested into SQLite, and surfaced via a Data Management panel in the UI. Coverage: ~100 realistic retail customers, all edge cases included. See §5.
 2. **NBA Action Catalogue** — Is the catalogue in §2.2.6 complete, or are there additional actions specific to the client's workflow?
 3. **Risk Segment Definitions** — What criteria define `low / medium / high / hardship` risk segments? Client-provided thresholds or FDE-defined for PoC?
 4. **Dispute Hold Scope** — Does a collection hold block all contact channels, or only specific ones (e.g., legal letters still allowed)?
 5. **NBA Scoring Logic** — Rules-based scoring in the NBA Agent, or should Claude reason free-form over the profiles with guardrails?
 6. ~~**PoC Demo Format**~~ — **Resolved: web UI (Streamlit).** Full pipeline triggered and viewed entirely from the browser. See §10.
-7. **UI Branding** — Should the Streamlit UI use client branding (logo, colour palette) or a generic Accenture/FDE theme for the demo?
-8. **Arrears Chart Type** — For the predicted DPD trajectory in the UI: bar chart (30/60/90d), line chart, or gauge dial for default probability?
+7. ~~**UI Branding**~~ — **Resolved: Generic Accenture/FDE theme.** Accenture purple (`#A100FF`) primary accent, black nav, white cards. No client branding. `.streamlit/config.toml` defined in §10.3.
+8. ~~**Arrears Chart Type**~~ — **Resolved: three charts combined in one card.** Semicircle gauge dial (default probability), SVG area line chart (DPD trajectory Now→+30d→+60d→+90d), and ranked horizontal bar chart (contributing risk factors by weight). See `ui/previews/preview_03_results.html` arrears card and §10.2.
+
+---
+
+## 13. Deployment & Platform Strategy
+
+### 13.1 Decision
+**Zero-cost, no credit-card-required stack** chosen to demonstrate DevOps, Observability, and SRE pillars end-to-end on a PoC budget.
+
+| Responsibility | Platform | Free Tier |
+|---|---|---|
+| Source control + CI/CD | GitHub + GitHub Actions | Unlimited public repos; 2,000 min/month private |
+| Streamlit UI hosting | Streamlit Community Cloud | Free for public GitHub repos; no cold-start sleep |
+| FastAPI backend hosting | Render.com | 750 hrs/month web service; auto-deploy from GitHub |
+| Observability (metrics + logs + traces) | Grafana Cloud | 10k Prometheus series, 50 GB Loki logs, 50 GB Tempo traces, 14-day retention |
+| SRE uptime monitoring | UptimeRobot | 50 monitors, 5-min checks, public status page |
+| Container registry | GitHub Container Registry (GHCR) | Free for public repos |
+
+### 13.2 End-to-End Platform Architecture
+
+```
+Developer → GitHub (push / PR)
+                │
+                ▼
+      GitHub Actions CI/CD
+      ┌────────────────────────────────────┐
+      │  lint (ruff) → typecheck (mypy)    │
+      │  → test (pytest)                   │
+      │  → docker build → push GHCR        │
+      │  → deploy API  → Render.com        │
+      │  → deploy UI   → Streamlit Cloud   │
+      └────────────────────────────────────┘
+                │                  │
+                ▼                  ▼
+        Render.com           Streamlit Community Cloud
+        FastAPI backend      Streamlit UI
+                │                  │
+                └────────┬─────────┘
+                         │ OpenTelemetry (OTLP)
+                         ▼
+                Grafana Cloud (free)
+                ├── Prometheus  agent metrics, latency, tokens
+                ├── Loki        structured JSON logs
+                ├── Tempo       distributed traces (per workflow run)
+                └── Dashboards + Alerts (email / webhook)
+                         │
+                         ▼
+                UptimeRobot → /health monitor
+                Public status page (SRE artefact)
+```
+
+### 13.3 Strategy Documents
+
+Full strategy for each pillar is defined in dedicated docs:
+
+| Pillar | Strategy Document |
+|---|---|
+| DevOps | [`docs/devops_strategy.md`](docs/devops_strategy.md) — CI/CD pipeline, branch strategy, Docker, environments, secrets |
+| Observability | [`docs/observability_strategy.md`](docs/observability_strategy.md) — Metrics, Logs, Traces, Grafana dashboards, alerting |
+| SRE | [`docs/sre_strategy.md`](docs/sre_strategy.md) — SLOs, SLIs, error budgets, incident runbook, uptime monitoring |
+
+### 13.4 Development Phase Addition
+
+| Phase | Deliverable | Priority |
+|---|---|---|
+| Phase 13 | Dockerise both services; GitHub Actions pipeline (lint → test → build → deploy) | P1 |
+| Phase 14 | Grafana Cloud setup — OTel exporter config, dashboards, alert rules | P1 |
+| Phase 15 | UptimeRobot monitors, public status page, SLO tracking dashboard | P2 |
