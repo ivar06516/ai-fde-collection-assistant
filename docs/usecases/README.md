@@ -20,6 +20,9 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 | UC-010 | [usecase-010.md](usecase-010.md) | Monitor Pipeline Health and Agent Performance | DevOps / SRE | P1 | 12, 14 |
 | UC-011 | [usecase-011.md](usecase-011.md) | Respond to Service Incident | SRE Engineer | P1 | 14–15 |
 | UC-012 | [usecase-012.md](usecase-012.md) | Deploy New Version via CI/CD Pipeline | DevOps Engineer | P1 | 13 |
+| UC-013 | [usecase-013.md](usecase-013.md) | MCP Tool Discovery and Execution | System | P1 | 16–17 |
+| UC-014 | [usecase-014.md](usecase-014.md) | Policy RAG for NBA Recommendation | System | P1 | 18–19 |
+| UC-015 | [usecase-015.md](usecase-015.md) | Dispute Precedent RAG and Historical Case Retrieval | System | P1 | 18–20 |
 
 ---
 
@@ -39,7 +42,10 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 | UC-010 | 6 | Covers metrics, traces, logs, dashboards, alerting, SLO compliance |
 | UC-011 | 7 | Covers alert timing, recovery email, rollback SLA, Loki root cause, GitHub Issue, status page |
 | UC-012 | 9 | Covers lint/type/test/coverage gates, GHCR push, staging deploy, prod deploy, rollback, budget policy |
-| **Total** | **86** | |
+| UC-013 | 7 | MCP server list_tools, tool call via protocol, audit prefix, policy resources, analytics hold, fallback |
+| UC-014 | 8 | Policy RAG retrieval, relevance, rationale citation, UI panel, hold not overridden, latency, idempotency |
+| UC-015 | 8 | Dispute precedent accuracy, historical case filter, UI visibility, real ingestion, composition |
+| **Total** | **101** | |
 
 ---
 
@@ -59,6 +65,9 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 | §10.2 UI Screens | UC-001, UC-007, UC-009 |
 | §11 API Contract | UC-001, UC-007 |
 | §13 Deployment Strategy | UC-010, UC-011, UC-012 |
+| §14 MCP & RAG Extensions | UC-013, UC-014, UC-015 |
+| `docs/mcp_rag_strategy.md §2` MCP Architecture | UC-013 |
+| `docs/mcp_rag_strategy.md §3` RAG Architecture | UC-014, UC-015 |
 
 ### Deployment Platforms → Use Cases
 | Platform | Use Cases |
@@ -69,6 +78,9 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 | GitHub Actions | UC-012 |
 | Grafana Cloud | UC-010, UC-011 |
 | UptimeRobot | UC-010, UC-011 |
+| MCP Servers (stdio subprocess, Render.com) | UC-013 |
+| ChromaDB at `data/chroma/` (Render.com) | UC-014, UC-015 |
+| sentence-transformers (CPU, Render.com) | UC-014, UC-015 |
 
 ### Observability Signals → Use Cases
 | Signal | Use Cases |
@@ -80,6 +92,9 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 | `nba_action_recommended_total` counter | UC-006, UC-010 |
 | Loki `workflow_id` query | UC-007, UC-011 |
 | Tempo trace waterfall | UC-001, UC-010, UC-011 |
+| `mcp_tool_call_duration_ms` histogram | UC-013 |
+| `rag_retrieval_duration_ms` histogram | UC-014, UC-015 |
+| `rag_chunks_retrieved` counter | UC-014, UC-015 |
 
 ### SRE Concerns → Use Cases
 | SRE Concern | Use Cases |
@@ -92,6 +107,9 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 | Error budget policy | UC-012 |
 | Incident runbook | UC-011 |
 | Deploy checklist | UC-010, UC-012 |
+| MCP graceful degradation | UC-013 |
+| RAG graceful degradation | UC-014, UC-015 |
+| ChromaDB re-ingest on Render cold deploy | UC-014, UC-015 |
 
 ---
 

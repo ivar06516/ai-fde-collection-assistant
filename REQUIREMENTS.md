@@ -1208,3 +1208,100 @@ Full strategy for each pillar is defined in dedicated docs:
 | Phase 13 | Dockerise both services; GitHub Actions pipeline (lint → test → build → deploy) | P1 |
 | Phase 14 | Grafana Cloud setup — OTel exporter config, dashboards, alert rules | P1 |
 | Phase 15 | UptimeRobot monitors, public status page, SLO tracking dashboard | P2 |
+
+---
+
+## 14. MCP & RAG Extensions
+
+### 14.1 Purpose
+Two PoC extensions that showcase advanced agentic patterns on top of the existing pipeline — zero additional infrastructure cost, additive and non-breaking to the baseline.
+
+| Extension | Pattern Demonstrated | Demo Narrative |
+|---|---|---|
+| **MCP (Model Context Protocol)** | Pluggable tool integration layer | "Swap SQLite for Salesforce CRM by replacing only the MCP server — agents unchanged" |
+| **RAG (Retrieval-Augmented Generation)** | Knowledge-grounded AI decisions | "NBA recommendations are grounded in your actual policy documents and informed by real historical outcomes — fully explainable" |
+
+### 14.2 MCP Architecture
+
+Three MCP servers run as stdio subprocesses alongside FastAPI. Agents use the Anthropic SDK MCP client instead of calling Python functions directly.
+
+| Server | Name | Exposes |
+|---|---|---|
+| Data Server | `crm-data` | 5 tools: `get_customer`, `get_account`, `get_payment_history`, `get_active_disputes`, `get_interaction_history` |
+| Policy Server | `collection-policy` | 4 resources: `collection_policy.md`, `nba_action_guide.md`, `dispute_resolution_guide.md`, `regulatory_compliance.md` |
+| Analytics Server | `collection-analytics` | 3 tools: `check_collection_hold`, `evaluate_action_eligibility`, `get_similar_historical_cases` |
+
+Full design: [`docs/mcp_rag_strategy.md §2`](docs/mcp_rag_strategy.md)
+
+### 14.3 RAG Architecture
+
+Three RAG pipelines backed by **ChromaDB** (embedded, file-based) with **sentence-transformers/all-MiniLM-L6-v2** embeddings (free, CPU-only).
+
+| Pipeline | Collection | Documents | Used By |
+|---|---|---|---|
+| Policy RAG | `policy_docs` | 4 policy markdown files, 500-token chunks | NBA Agent — pre-pass before Opus synthesis |
+| Historical Case RAG | `historical_cases` | 50 synthetic pre-seeded cases + real `workflow_audit` records (Phase 20) | NBA Agent — empirical precedents |
+| Dispute Precedent RAG | `dispute_precedents` | `dispute_resolution_guide.md` | Dispute Agent — classification accuracy |
+
+**NBA Agent enhancement:** RAG pre-pass injects top 3 policy chunks + top 2 similar cases into system prompt. The NBA Recommendation card in the UI gains a "Retrieved Context" expandable panel.
+
+Full design: [`docs/mcp_rag_strategy.md §3`](docs/mcp_rag_strategy.md)
+
+### 14.4 New Dependencies
+
+```
+# MCP
+mcp>=1.0.0                    # MCP server + client SDK
+
+# RAG
+chromadb>=0.5.0               # Embedded vector store (no server, file-based)
+sentence-transformers>=3.0.0  # Free CPU embeddings (all-MiniLM-L6-v2, ~90MB)
+```
+
+### 14.5 New Project Structure
+
+```
+src/collection_assistant/
+├── mcp_servers/
+│   ├── data_server.py          # CRM + banking + disputes (wraps SQLite)
+│   ├── policy_server.py        # Policy docs as MCP resources
+│   └── analytics_server.py    # Hold checks, eligibility, similar-case lookup
+│
+└── rag/
+    ├── vectorstore.py          # ChromaDB client factory
+    ├── retriever.py            # PolicyRetriever, HistoricalCaseRetriever, DisputeRetriever
+    ├── ingester.py             # Chunking + embedding pipeline
+    ├── chunker.py              # 500-token markdown-aware splitter
+    └── documents/              # Policy source documents
+        ├── collection_policy.md
+        ├── nba_action_guide.md
+        ├── dispute_resolution_guide.md
+        └── regulatory_compliance.md
+
+data/
+└── chroma/                     # ChromaDB persistent store
+    ├── policy_docs/
+    ├── historical_cases/
+    └── dispute_precedents/
+
+scripts/
+└── ingest_rag_documents.py     # Chunk + embed docs; optionally ingest workflow_audit
+```
+
+### 14.6 MCP & RAG Use Cases
+
+| Use Case | File | Capability |
+|---|---|---|
+| UC-013 | [`docs/usecases/usecase-013.md`](docs/usecases/usecase-013.md) | MCP tool discovery, protocol execution, audit trail prefixing |
+| UC-014 | [`docs/usecases/usecase-014.md`](docs/usecases/usecase-014.md) | Policy RAG pre-pass for NBA Agent, "Retrieved Context" UI panel |
+| UC-015 | [`docs/usecases/usecase-015.md`](docs/usecases/usecase-015.md) | Dispute precedent RAG + historical case retrieval for NBA Agent |
+
+### 14.7 Additional Development Phases
+
+| Phase | Deliverable | Priority |
+|---|---|---|
+| Phase 16 | MCP Data Server wrapping 5 SQLite tools; Customer Profile + Account Profile agents migrated to MCP client | P1 |
+| Phase 17 | MCP Policy Server + Analytics Server; Dispute + NBA agents migrated; MCP server status in Streamlit sidebar | P1 |
+| Phase 18 | RAG pipeline — ChromaDB setup, document ingestion, Policy + Historical Case + Dispute Precedent retrievers wired into agents | P1 |
+| Phase 19 | UI: "Retrieved Context" panel in NBA card; RAG retrievals in Audit Trail | P2 |
+| Phase 20 | Real historical case ingestion from `workflow_audit` after ≥ 20 pipeline runs | P2 |
