@@ -3,7 +3,7 @@
 ## 1. Project Overview
 
 ### 1.1 Purpose
-The AI FDE Collection Assistant is a **Forward Deployed Engineer (FDE) proof of concept** demonstrating how a multi-agent AI system can power intelligent, context-aware debt collection. Five specialized agents collaborate — each owning a distinct domain of intelligence — and feed their outputs into a Next Best Action engine that decides the optimal intervention for each customer.
+The AI FDE Collection Assistant is a **Forward Deployed Engineer (FDE) proof of concept** demonstrating how a multi-agent AI system can power intelligent, context-aware debt collection. The entire experience is delivered through a **web UI** — a collection agent opens the dashboard, enters a customer and account ID, watches the five specialized AI agents execute in real time, and receives a clear Next Best Action recommendation with full decision transparency. No CLI, no notebook, no raw API calls — everything from the UI.
 
 ### 1.2 Goals
 The PoC must demonstrate a working end-to-end multi-agent pipeline covering these five capabilities:
@@ -21,72 +21,89 @@ The PoC must demonstrate a working end-to-end multi-agent pipeline covering thes
 ### 1.3 Scope
 This is a **PoC scope** — functional enough to demonstrate the multi-agent pattern end-to-end with stubbed data sources, not production-hardened.
 
-- Given a customer/account ID, run all five agents in the correct dependency order and return a structured NBA recommendation
+- **Primary interface is the web UI** — all interactions (input, trigger, results, audit) happen through the browser
+- Given a customer/account ID entered in the UI, run all five agents in the correct dependency order
+- Real-time agent execution progress streamed to the UI so the user sees each agent complete live
+- Results rendered as structured, visual cards — not raw JSON
 - Data sources (CRM, core banking, dispute management system) are stubbed with realistic mock data
-- No live channel dispatch — NBA output is the final artefact
-- Human-readable audit trail logged for every agent decision step
+- NBA output and full audit trail surfaced in the UI — no post-hoc log digging required
 
 ---
 
 ## 2. Multi-Agent Architecture
 
 ### 2.1 Architecture Pattern
-**Sequential Pipeline with Two Parallel Stages → NBA Synthesis**
+**UI-Driven Pipeline: Browser → API → LangGraph → 5 Agents → Streamed Results**
 
 ```
-  Input: customer_id + account_id
-           │
-           ▼
-  ┌─────────────────────────┐
-  │    Orchestrator Agent   │  ← Manages pipeline, shared state, error handling
-  └────────────┬────────────┘
-               │
-    ── STAGE 1: parallel ──────────────────────────────
-     ┌─────────┴──────────┐
-     │                    │
-     ▼                    ▼
-┌──────────────┐   ┌──────────────┐
-│  Customer    │   │  Account     │
-│  Profile     │   │  Profile     │
-│  Agent       │   │  Agent       │
-└──────┬───────┘   └──────┬───────┘
-       │                  │
-       └────────┬─────────┘
-                │  (both complete)
-    ── STAGE 2: parallel ──────────────────────────────
-                │
-        ┌───────┴────────┐
-        │                │
-        ▼                ▼
-┌───────────────┐  ┌─────────────────┐
-│  Arrears      │  │  Dispute        │
-│  Prediction   │  │  Agent          │
-│  Agent        │  │                 │
-└───────┬───────┘  └────────┬────────┘
-        │                   │
-        └──────────┬────────┘
-                   │  (both complete)
-    ── STAGE 3: sequential ────────────────────────────
-                   ▼
-          ┌────────────────┐
-          │  Next Best     │  ← Synthesises all 4 upstream outputs
-          │  Action (NBA)  │
-          │  Agent         │
-          └───────┬────────┘
-                  │
-                  ▼
-          ┌────────────────┐
-          │  Audit Agent   │  ← Logs full decision trail
-          └───────┬────────┘
-                  │
-                  ▼
-  Output: NBA recommendation + audit trail
+  ┌──────────────────────────────────────────────────┐
+  │                 WEB UI (Streamlit)               │
+  │                                                  │
+  │  [Input Form]          [Agent Execution Panel]  │
+  │  customer_id ────┐     Stage 1 ● Customer ✓     │
+  │  account_id  ────┤     Stage 1 ● Account  ✓     │
+  │  trigger     ────┤     Stage 2 ● Arrears  ⟳     │
+  │  [Run ▶]     ────┘     Stage 2 ● Dispute  ⟳     │
+  │                        Stage 3 ● NBA      ○     │
+  │                                                  │
+  │  [Customer Card] [Account Card] [Arrears Card]  │
+  │  [Dispute Card]  [NBA Recommendation ★]         │
+  │  [Audit Trail ▾]                                │
+  └───────────────────────┬──────────────────────────┘
+                          │ HTTP POST + SSE stream
+                          ▼
+  ┌──────────────────────────────────────────────────┐
+  │              FastAPI Backend                     │
+  │  POST /collections/recommend  (trigger run)     │
+  │  GET  /collections/{id}/stream (SSE progress)   │
+  │  GET  /collections/{id}/audit  (full trail)     │
+  └───────────────────────┬──────────────────────────┘
+                          │ LangGraph
+                          ▼
+              ┌───────────────────────┐
+              │   Orchestrator Agent  │
+              └───────────┬───────────┘
+                          │
+           ── STAGE 1: parallel ──────────────
+            ┌─────────────┴──────────────┐
+            ▼                            ▼
+   ┌─────────────────┐        ┌─────────────────┐
+   │ Customer Profile│        │ Account Profile │
+   │     Agent       │        │     Agent       │
+   └────────┬────────┘        └────────┬────────┘
+            └──────────┬───────────────┘
+                       │
+           ── STAGE 2: parallel ──────────────
+                  ┌────┴──────┐
+                  ▼           ▼
+        ┌──────────────┐  ┌──────────────┐
+        │   Arrears    │  │   Dispute    │
+        │  Prediction  │  │    Agent     │
+        │    Agent     │  │              │
+        └──────┬───────┘  └──────┬───────┘
+               └────────┬────────┘
+                        │
+           ── STAGE 3: sequential ────────────
+                        ▼
+               ┌─────────────────┐
+               │   NBA Agent     │  ← Synthesises all 4 outputs
+               └────────┬────────┘
+                        ▼
+               ┌─────────────────┐
+               │   Audit Agent   │  ← Builds decision trail
+               └────────┬────────┘
+                        │ SSE event stream  ↑ back to UI
+                        ▼
+               workflow_status = "completed"
 ```
 
-**Communication pattern:** All agents share a single `CollectionWorkflowState` object.
-- **Stage 1 (parallel):** Customer Profile + Account Profile — no inter-dependency
-- **Stage 2 (parallel):** Arrears Prediction + Dispute Agent — both depend only on Stage 1 outputs, not on each other
-- **Stage 3 (sequential):** NBA Agent consumes all four upstream outputs; Audit Agent runs last
+**Communication pattern:**
+- UI triggers the run via `POST /collections/recommend` and immediately opens an SSE stream
+- Each agent completion emits a server-sent event — the UI updates live (no polling)
+- All agents share a single `CollectionWorkflowState` object within the LangGraph run
+- **Stage 1 (parallel):** Customer Profile + Account Profile
+- **Stage 2 (parallel):** Arrears Prediction + Dispute Agent
+- **Stage 3 (sequential):** NBA Agent → Audit Agent
 
 ### 2.2 Agent Definitions
 
@@ -185,9 +202,15 @@ langgraph>=0.2.0               # Agent graph orchestration (state machines)
 langchain-core>=0.3.0          # Tool abstractions and message types
 langchain-anthropic>=0.3.0     # LangChain <-> Anthropic integration
 
+# UI
+streamlit>=1.40.0              # Web UI framework (primary demo interface)
+httpx>=0.27.0                  # Async HTTP + SSE client for Streamlit → FastAPI
+plotly>=5.24.0                 # Arrears trajectory and DPD charts in UI
+
 # API & Service Layer
-fastapi>=0.115.0               # REST API for agent invocation
+fastapi>=0.115.0               # REST API for agent invocation + SSE streaming
 uvicorn[standard]>=0.32.0      # ASGI server
+sse-starlette>=2.1.0           # SSE response type for FastAPI
 pydantic>=2.9.0                # Data validation and shared state schemas
 pydantic-settings>=2.6.0       # Config management from env vars
 
@@ -282,16 +305,32 @@ ai-fde-collection-assistant/
 │       │   ├── dispute.py                 # DisputeSummary
 │       │   └── nba.py                     # NBARecommendation
 │       │
-│       ├── api/                           # FastAPI layer
+│       ├── api/                           # FastAPI backend
 │       │   ├── __init__.py
 │       │   ├── main.py
 │       │   ├── routes/
-│       │   │   ├── collections.py         # POST /collections/recommend
+│       │   │   ├── collections.py         # POST /recommend, GET /stream, GET /audit
 │       │   │   └── health.py              # GET /health
 │       │   └── dependencies.py
 │       │
 │       ├── config.py
 │       └── exceptions.py
+│
+├── ui/                                    # Streamlit web UI
+│   ├── app.py                             # Main Streamlit entry point
+│   ├── pages/
+│   │   ├── 01_input.py                    # Customer/Account input form
+│   │   └── 02_results.py                  # Results dashboard (if multi-page)
+│   ├── components/
+│   │   ├── execution_panel.py             # Live agent execution timeline
+│   │   ├── customer_card.py               # Customer Profile result card
+│   │   ├── account_card.py                # Account Profile result card
+│   │   ├── arrears_card.py                # Arrears Prediction card + trajectory chart
+│   │   ├── dispute_card.py                # Dispute Summary card
+│   │   ├── nba_card.py                    # NBA Recommendation highlighted card
+│   │   └── audit_panel.py                 # Expandable audit trail
+│   ├── sse_client.py                      # SSE stream consumer (httpx async)
+│   └── styles.css                         # Custom CSS for card styling
 │
 ├── tests/
 │   ├── unit/
@@ -532,56 +571,246 @@ class Settings(BaseSettings):
 
 ---
 
-## 10. API Contract
+## 10. UI Requirements
+
+### 10.1 Technology Stack
+| Layer | Choice | Reason |
+|---|---|---|
+| UI Framework | **Streamlit** | Python-native; integrates directly with the agent backend; fast to build; real-time streaming support; professional look with minimal CSS |
+| Backend API | **FastAPI** | Async; native SSE support for streaming agent events to the UI |
+| Real-time transport | **Server-Sent Events (SSE)** | One-way push from server to browser; simpler than WebSocket for this use case |
+| Styling | Streamlit native + `st.markdown` custom CSS | Sufficient for PoC polish |
+
+### 10.2 UI Screens
+
+#### Screen 1 — Input Panel
+The starting screen. Clean, minimal form.
+
+```
+┌─────────────────────────────────────────────────┐
+│  AI Collection Assistant                  [logo] │
+├─────────────────────────────────────────────────┤
+│                                                  │
+│  Customer ID   [ CUST-001          ▾ ]  (or type)│
+│  Account ID    [ ACC-001           ▾ ]  (or type)│
+│  Trigger       [ New Delinquency   ▾ ]           │
+│                                                  │
+│              [ ▶  Run Analysis ]                 │
+│                                                  │
+│  ── Quick load: Sample scenarios ──              │
+│  [ Dispute Hold ]  [ Critical Arrears ]          │
+│  [ Improving Customer ]  [ Standard Case ]       │
+└─────────────────────────────────────────────────┘
+```
+
+- Customer ID and Account ID are dropdowns pre-populated from `mock_data/` or free-text
+- Trigger context dropdown: `New Delinquency`, `Missed Payment`, `Periodic Review`
+- Quick-load buttons populate the form with pre-built mock scenarios for demo purposes
+
+#### Screen 2 — Agent Execution Panel (live, appears on Run click)
+Real-time pipeline view. Each stage updates as SSE events arrive.
+
+```
+┌─────────────────────────────────────────────────┐
+│  Running analysis for CUST-001 / ACC-001         │
+├─────────────────────────────────────────────────┤
+│  STAGE 1 — Data Collection          [parallel]  │
+│  ✅ Customer Profile Agent     1.2s  complete    │
+│  ✅ Account Profile Agent      0.9s  complete    │
+│                                                  │
+│  STAGE 2 — Analysis             [parallel]      │
+│  ⟳  Arrears Prediction Agent   running...       │
+│  ✅ Dispute Agent               0.7s  complete   │
+│                                                  │
+│  STAGE 3 — Synthesis           [sequential]     │
+│  ○  NBA Agent                  waiting...       │
+│  ○  Audit Agent                waiting...       │
+│                                                  │
+│  ████████████░░░░░░░░  60%   ~4s remaining       │
+└─────────────────────────────────────────────────┘
+```
+
+- Each agent row shows: status icon (⟳ running / ✅ done / ○ waiting / ❌ error), name, elapsed time, status label
+- Progress bar shows overall pipeline completion
+- Stage labels make the parallel vs sequential structure visible to the demo audience
+
+#### Screen 3 — Results Dashboard (appears when pipeline completes)
+Full results in card layout. All four agent outputs + NBA recommendation visible at once.
+
+```
+┌─────────────── CUSTOMER PROFILE ──────────────┐
+│  John Smith                    Risk: ● HIGH    │
+│  📱 Mobile  ✉ Email            Segment: Avoidant│
+│  Best time: Morning            Tenure: 4 years │
+│  Prior collections: 2          Hardship: None  │
+└───────────────────────────────────────────────┘
+
+┌─────────────── ACCOUNT PROFILE ───────────────┐
+│  Personal Loan        Status: ⚠ DELINQUENT     │
+│  Balance: $2,850.00   DPD: 45 days             │
+│  Last payment: $120 on 2025-04-10              │
+│  [Payment history sparkline ▁▂▄▆▃▁▁▁▁▁▁▁]     │
+└───────────────────────────────────────────────┘
+
+┌─────────────── ARREARS PREDICTION ────────────┐
+│  Trajectory: ↗ DETERIORATING                  │
+│  Default probability:  ████████░░  78%        │
+│  Predicted DPD:  30d→55  60d→68  90d→82       │
+│  Factors: missed_3_consecutive, balance_growth │
+└───────────────────────────────────────────────┘
+
+┌─────────────── DISPUTE SUMMARY ───────────────┐
+│  Active disputes: 0     Collection hold: ✅ NO │
+│  Last resolved: Billing error (2024-11)        │
+└───────────────────────────────────────────────┘
+
+┌══════════════ NEXT BEST ACTION ════════════════╗
+║  ★ INITIATE CALL                               ║
+║  Channel: 📱 Mobile   Confidence: 87%          ║
+║                                                ║
+║  Rationale:                                    ║
+║  "DPD 45 with deteriorating trajectory and     ║
+║   78% default probability warrants direct      ║
+║   contact. No dispute hold. Customer          ║
+║   reachable by mobile, prefers morning."       ║
+║                                                ║
+║  Alternatives:                                 ║
+║  2. Send SMS (71%)   3. Payment Plan (65%)     ╚
+└════════════════════════════════════════════════┘
+
+▾ View Full Audit Trail
+```
+
+#### Screen 4 — Audit Trail (expandable panel)
+Collapsible section below the results. Shows the decision lineage per agent.
+
+```
+▾ Full Audit Trail — wf-abc123  (completed in 7.8s)
+  ├── ✅ Customer Profile Agent    1.2s
+  │       Input:  customer_id=CUST-001
+  │       Output: risk_segment=high, contact=mobile+email
+  ├── ✅ Account Profile Agent     0.9s
+  │       Input:  account_id=ACC-001
+  │       Output: DPD=45, status=delinquent, balance=2850
+  ├── ✅ Arrears Prediction Agent  2.1s
+  │       Input:  payment_history (12m), risk_segment=high
+  │       Output: trajectory=deteriorating, probability=0.78
+  ├── ✅ Dispute Agent             0.7s
+  │       Input:  account_id=ACC-001
+  │       Output: active_disputes=0, collection_hold=false
+  ├── ✅ NBA Agent                 2.4s
+  │       Input:  all 4 profiles
+  │       Output: action=initiate_call, confidence=0.87
+  └── ✅ Audit Agent              0.5s
+          Generated: decision lineage record audit-xyz
+```
+
+### 10.3 UX Principles
+- **No raw JSON exposed** — all agent outputs rendered as human-readable cards with labels and icons
+- **Progressive disclosure** — Input → Execution → Results → Audit Trail (each stage appears in sequence)
+- **Real-time feedback** — user sees agents completing live; not a spinner followed by a wall of text
+- **Demo-ready scenarios** — one-click quick-load buttons to show the dispute hold path and critical arrears path without typing IDs
+- **Colour coding** — risk and status indicators use consistent colour: red = high/critical, amber = medium/deteriorating, green = low/improving
+- **Mobile-readable** — cards stack to single column on narrow screens
+
+### 10.4 Streamlit Implementation Notes
+- Use `st.status()` for real-time agent execution display
+- Use `st.metric()` for DPD, balance, default probability
+- Use `st.progress()` for overall pipeline progress
+- Use `st.expander()` for the audit trail
+- Stream SSE events from FastAPI → parsed by `httpx` in Streamlit's async context → update `st.session_state` → `st.rerun()` to refresh UI
+- All agent result cards built with `st.columns()` + `st.container()`
+
+---
+
+## 11. API Contract
+
+All three endpoints are consumed by the Streamlit UI. No endpoint is intended for direct human use.
 
 ### POST `/collections/recommend`
-Run the full multi-agent pipeline for a customer/account and return the NBA recommendation.
+Triggers the pipeline. Returns a `workflow_id` immediately; the UI then opens the SSE stream for live progress.
 
 **Request:**
 ```json
 {
   "customer_id": "CUST-001",
-  "account_id": "ACC-20250603-001",
+  "account_id": "ACC-001",
   "trigger_context": "new_delinquency"
 }
 ```
+**Response (202 Accepted):**
+```json
+{ "workflow_id": "wf-abc123", "status": "in_progress" }
+```
+
+---
+
+### GET `/collections/{workflow_id}/stream`
+Server-Sent Events stream. UI opens this immediately after receiving `workflow_id`.
+Each event has `event: agent_update` with a JSON data payload.
+
+**Event stream example:**
+```
+event: agent_update
+data: {"agent": "customer_profile", "stage": 1, "status": "running", "elapsed_ms": 0}
+
+event: agent_update
+data: {"agent": "account_profile", "stage": 1, "status": "running", "elapsed_ms": 10}
+
+event: agent_update
+data: {"agent": "customer_profile", "stage": 1, "status": "complete", "elapsed_ms": 1180,
+       "output": {"risk_segment": "high", "preferred_contact_time": "morning"}}
+
+event: agent_update
+data: {"agent": "account_profile", "stage": 1, "status": "complete", "elapsed_ms": 920,
+       "output": {"days_past_due": 45, "account_status": "delinquent", "outstanding_balance": 2850.0}}
+
+event: agent_update
+data: {"agent": "arrears_prediction", "stage": 2, "status": "complete", "elapsed_ms": 2100,
+       "output": {"arrears_trajectory": "deteriorating", "default_probability": 0.78}}
+
+event: agent_update
+data: {"agent": "dispute", "stage": 2, "status": "complete", "elapsed_ms": 680,
+       "output": {"collection_hold": false, "has_active_dispute": false}}
+
+event: agent_update
+data: {"agent": "nba", "stage": 3, "status": "complete", "elapsed_ms": 2390,
+       "output": {"action": "initiate_call", "channel": "mobile", "confidence_score": 0.87}}
+
+event: workflow_complete
+data: {"workflow_id": "wf-abc123", "status": "completed", "total_ms": 7840}
+```
+
+---
+
+### GET `/collections/{workflow_id}/audit`
+Returns the full structured audit trail. Called by the UI when the user expands the Audit Trail panel.
 
 **Response:**
 ```json
 {
-  "workflow_id": "wf-uuid-here",
-  "status": "completed",
-  "customer_profile": {
-    "risk_segment": "high",
-    "preferred_contact_time": "morning",
-    "hardship_indicators": ["none"]
-  },
-  "account_profile": {
-    "outstanding_balance": 2850.00,
-    "days_past_due": 45,
-    "account_status": "delinquent",
-    "product_type": "personal_loan"
-  },
-  "dispute_summary": {
-    "has_active_dispute": false,
-    "collection_hold": false
-  },
+  "workflow_id": "wf-abc123",
+  "completed_at": "2026-06-03T09:15:32Z",
+  "total_execution_ms": 7840,
+  "agents": [
+    {
+      "agent": "customer_profile", "stage": 1, "status": "complete",
+      "elapsed_ms": 1180, "input_tokens": 312, "output_tokens": 189,
+      "input_summary": {"customer_id": "CUST-001"},
+      "output_summary": {"risk_segment": "high", "contact_channels": ["mobile","email"]}
+    }
+  ],
   "nba_recommendation": {
-    "action": "initiate_call",
-    "channel": "mobile",
-    "rationale": "Customer is reachable by mobile in the morning, no dispute hold, DPD 45 warrants direct contact before escalation.",
+    "action": "initiate_call", "channel": "mobile",
+    "rationale": "DPD 45 with deteriorating trajectory and 78% default probability warrants direct contact. No dispute hold. Customer reachable by mobile, prefers morning.",
     "confidence_score": 0.87,
     "alternative_actions": [
-      {"action": "send_sms", "channel": "mobile", "score": 0.71},
-      {"action": "offer_payment_plan", "channel": "email", "score": 0.65}
+      {"action": "send_sms", "score": 0.71},
+      {"action": "offer_payment_plan", "score": 0.65}
     ]
-  },
-  "execution_time_ms": 7840
+  }
 }
 ```
-
-### GET `/collections/{workflow_id}/audit`
-Retrieve the full per-agent decision audit trail for a workflow run.
 
 ---
 
@@ -589,23 +818,29 @@ Retrieve the full per-agent decision audit trail for a workflow run.
 
 | Phase | Deliverable | Priority |
 |---|---|---|
+| Phase | Deliverable | Priority |
+|---|---|---|
 | Phase 1 | Project scaffold, `pyproject.toml`, config, `CollectionWorkflowState` schema, mock data JSON files | P0 |
 | Phase 2 | Customer Profile Agent + Account Profile Agent + stubbed tools | P0 |
 | Phase 3 | Arrears Prediction Agent — pattern analysis, trajectory, default probability | P0 |
 | Phase 4 | Dispute Agent + collection hold logic | P0 |
 | Phase 5 | NBA Agent with action catalogue, arrears-signal routing, and dispute hard constraints | P0 |
-| Phase 6 | Orchestrator Agent + LangGraph graph (Stage 1 parallel → Stage 2 parallel → Stage 3 sequential) | P0 |
-| Phase 7 | Audit Agent + full pipeline integration tests (happy path, dispute hold, critical arrears path) | P0 |
-| Phase 8 | FastAPI layer (`POST /collections/recommend`, `GET /audit`) | P1 |
-| Phase 9 | Observability: OTel tracing per agent call, structured logs | P2 |
+| Phase 6 | Orchestrator Agent + LangGraph graph (Stage 1 → Stage 2 → Stage 3 wiring) | P0 |
+| Phase 7 | FastAPI backend — `POST /recommend`, `GET /stream` (SSE), `GET /audit` | P0 |
+| Phase 8 | Streamlit UI — Input form, live execution panel (SSE consumer), result cards, audit trail | P0 |
+| Phase 9 | Demo polish — quick-load scenarios, colour-coded risk badges, trajectory charts | P1 |
+| Phase 10 | Integration tests — happy path, dispute hold path, critical arrears path, all via UI | P1 |
+| Phase 11 | Observability: OTel tracing per agent call, structured logs | P2 |
 
 ---
 
 ## 12. Open Questions / Decisions Required
 
 1. **Mock Data Fidelity** — How realistic should the stubbed customer/account/dispute data be? Should it cover edge cases (e.g., multiple active disputes, written-off accounts)?
-2. **NBA Action Catalogue** — Is the catalogue in §2.2.5 complete, or are there additional actions specific to the client's workflow?
+2. **NBA Action Catalogue** — Is the catalogue in §2.2.6 complete, or are there additional actions specific to the client's workflow?
 3. **Risk Segment Definitions** — What criteria define `low / medium / high / hardship` risk segments? Client-provided thresholds or FDE-defined for PoC?
 4. **Dispute Hold Scope** — Does a collection hold block all contact channels, or only specific ones (e.g., legal letters still allowed)?
 5. **NBA Scoring Logic** — Rules-based scoring in the NBA Agent, or should Claude reason free-form over the profiles with guardrails?
-6. **PoC Demo Format** — Is the deliverable a REST API demo, a CLI walkthrough, or a notebook showing the pipeline end-to-end?
+6. ~~**PoC Demo Format**~~ — **Resolved: web UI (Streamlit).** Full pipeline triggered and viewed entirely from the browser. See §10.
+7. **UI Branding** — Should the Streamlit UI use client branding (logo, colour palette) or a generic Accenture/FDE theme for the demo?
+8. **Arrears Chart Type** — For the predicted DPD trajectory in the UI: bar chart (30/60/90d), line chart, or gauge dial for default probability?
