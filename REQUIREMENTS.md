@@ -3,9 +3,10 @@
 ## 1. Project Overview
 
 ### 1.1 Purpose
-The AI FDE (Field Debt Enforcement) Collection Assistant is an intelligent multi-agent system designed to automate and augment the debt collection lifecycle. It orchestrates specialized AI agents to handle customer profiling, communication drafting, payment negotiation, compliance checks, and escalation decisions — reducing manual effort and improving collection outcomes.
+The AI FDE Collection Assistant is a **Forward Deployed Engineer (FDE) proof of concept** demonstrating how a multi-agent AI system can automate and augment the debt collection lifecycle. Built as a PoC to showcase the value of agentic AI to a client, it orchestrates specialized Claude-powered agents to handle customer profiling, communication drafting, payment negotiation, compliance checks, and escalation decisions — reducing manual effort and improving collection outcomes.
 
 ### 1.2 Goals
+- Demonstrate agentic AI value to the client through a working PoC of the collection workflow
 - Automate routine collection workflows end-to-end using collaborative AI agents
 - Ensure every action is compliant with applicable regulations (FDCPA, TCPA, GDPR, local laws)
 - Personalize outreach and payment plans based on debtor profiles and behavioral signals
@@ -13,7 +14,9 @@ The AI FDE (Field Debt Enforcement) Collection Assistant is an intelligent multi
 - Support human-in-the-loop review for high-stakes decisions
 
 ### 1.3 Scope
-- Inbound: process new delinquent accounts assigned to the FDE queue
+This is a **PoC scope** — functional enough to demonstrate the multi-agent pattern end-to-end, not production-hardened. External integrations (CRM, credit bureau) are stubbed.
+
+- Inbound: process new delinquent accounts entering the collection queue
 - Outbound: initiate and track multi-channel collection communications
 - Decision support: recommend escalation paths, settlement offers, and legal actions
 - Reporting: generate agent activity logs, KPIs, and compliance audit trails
@@ -304,7 +307,7 @@ class CollectionWorkflowState(TypedDict):
 ### 6.1 Happy Path — New Delinquency
 
 ```
-1. Trigger: New account enters FDE queue
+1. Trigger: New account enters the collection queue
 2. Orchestrator receives account_id + trigger_event
 3. Orchestrator → Profiling Agent
    - Builds debtor_profile, risk_score, segment
