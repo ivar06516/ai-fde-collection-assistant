@@ -64,7 +64,7 @@ State (customer + account + arrears + dispute)
 | 3 | **Retrieve similar cases** | `HistoricalCaseRetriever.retrieve(dpd, product_type, trajectory, n_results=2)` |
 | 4 | **Format retrieved context** | Build markdown-formatted section: `RETRIEVED POLICY:\n{chunk1}\n{chunk2}\n{chunk3}\nSIMILAR CASES:\n{case1}\n{case2}` |
 | 5 | **Inject into system prompt** | Append formatted context to base NBA system prompt |
-| 6 | **LLM synthesis (Opus 4.8)** | Claude reasons over full state + policy context → produces `NBARecommendation` |
+| 6 | **LLM synthesis (Groq Llama 3.3 70B)** | Groq Llama reasons over full state + policy context → produces `NBARecommendation` |
 | 7 | **Attach retrieved context to output** | `nba_recommendation['retrieved_policy_chunks']` and `['retrieved_similar_cases']` added |
 | 8 | **Audit Agent logs retrievals** | Retrieved chunks recorded in `workflow_audit.full_state_json` |
 

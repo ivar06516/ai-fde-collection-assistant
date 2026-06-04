@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
-    anthropic_api_key: str = ""
+    anthropic_api_key: str = ""  # future upgrade only — not required for PoC (free_cloud uses Groq)
 
     database_url: str = "sqlite:///data/collection_assistant.db"
 

@@ -41,7 +41,7 @@ with st.sidebar:
     st.caption("Multi-Agent Architecture PoC")
     st.markdown("---")
     provider = os.environ.get("LLM_PROVIDER", "free_cloud")
-    icons = {"free_cloud": "Groq (Free)", "local": "Ollama (Local)", "premium": "Anthropic"}
+    icons = {"free_cloud": "Groq (Free)", "local": "Ollama (Local)", "premium": "Anthropic (future)"}
     st.info(f"LLM: **{icons.get(provider, provider)}**")
     st.markdown("---")
     st.markdown("**Data Management**")

@@ -56,7 +56,7 @@
 |---|---|---|
 | Render cold start | First request after 15 min idle takes ~30s | UptimeRobot keep-warm monitor pings `/health` every 5 min |
 | SQLite locked | `OperationalError: database is locked` in Loki | Single Render instance enforces single writer; restart service |
-| Anthropic API down | `agent_failed` log events for all LLM agents | Check `status.anthropic.com`; wait or implement circuit breaker |
+| Groq API down | `agent_failed` log events for all LLM agents | Check `status.groq.com`; wait or implement circuit breaker |
 | Bad deploy (regression) | Error rate spike immediately after deploy | Rollback via Render dashboard to previous deploy image |
 | LangGraph state corruption | Workflow stuck in `in_progress` | 30s timeout guard in Orchestrator; dead-letter to `error_log` |
 

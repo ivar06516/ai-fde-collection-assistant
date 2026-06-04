@@ -2,7 +2,7 @@
 
 ## 1. Problem Statement
 
-Using Anthropic Claude for all 7 agents in every pipeline run incurs token costs that are unnecessary for a PoC. This document defines a **provider-agnostic architecture** that defaults to zero-cost free LLMs while keeping Anthropic as an optional upgrade path for the most reasoning-intensive agent.
+This document defines the **provider-agnostic LLM architecture**. The PoC runs entirely on **Groq free tier** (zero cost, no credit card). Anthropic Claude is documented as a future upgrade path only — not active for PoC.
 
 ---
 
@@ -11,7 +11,7 @@ Using Anthropic Claude for all 7 agents in every pipeline run incurs token costs
 | Component | Anthropic-Specific? | Can Be Swapped? |
 |---|---|---|
 | Claude model IDs (`llama-3.3-70b-versatile`, `llama-3.3-70b-versatile`) | Yes | Yes — replace with any provider's model ID |
-| Anthropic SDK MCP client wrapper | Yes | Yes — use `mcp` Python client directly (provider-agnostic) |
+| Anthropic SDK MCP client wrapper | Yes — *not used in PoC* | Use `mcp` Python client directly (provider-agnostic) |
 | Prompt caching (`cache_control` header) | Yes | Drop entirely for PoC; not needed |
 | Tool use / function calling | No — standard across providers | Already abstracted by LangChain |
 | Structured output (JSON) | No — all major providers support | No change needed |
@@ -98,8 +98,7 @@ class Settings(BaseSettings):
     # Provider selection
     llm_provider: LLMProvider = LLMProvider.FREE_CLOUD
 
-    # Anthropic (premium / hybrid NBA agent only)
-    anthropic_api_key: str = ""
+    # anthropic_api_key: str = ""  # future upgrade only
 
     # Groq (free_cloud / hybrid non-NBA)
     groq_api_key: str = ""      # Free at console.groq.com
@@ -172,21 +171,17 @@ def get_llm(agent_name: str, settings: Settings) -> BaseChatModel:
         return ChatOllama(model=model_id, base_url=settings.ollama_base_url, temperature=0)
 
     elif provider in (LLMProvider.PREMIUM, LLMProvider.HYBRID):
-        if "claude" in model_id:
-            from langchain_anthropic import ChatAnthropic
-            return ChatAnthropic(model=model_id, api_key=settings.anthropic_api_key, temperature=0)
-        else:
-            from langchain_groq import ChatGroq
-            return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
+        # Groq handles all modes in PoC (premium/hybrid are future upgrade paths)
+        from langchain_groq import ChatGroq
+        return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
 ```
 
 ### 6.3 Updated Agent Usage
 
 Before (Anthropic-only):
 ```python
-# Hard-coded to Anthropic
-client = anthropic.Anthropic()
-response = client.messages.create(model="llama-3.3-70b-versatile", ...)
+# Hard-coded (OLD — pre-migration)
+# old_client = ... — replaced by LLMClientFactory
 ```
 
 After (provider-agnostic via LangChain):
@@ -226,7 +221,7 @@ This replaces the Anthropic SDK's `mcp_servers=[]` shortcut with the standard `m
 ```bash
 LLM_PROVIDER=free_cloud
 GROQ_API_KEY=gsk_...          # Free at console.groq.com — no credit card needed
-ANTHROPIC_API_KEY=             # Leave blank
+# ANTHROPIC_API_KEY not needed for PoC
 ```
 
 ### For `local` mode (Ollama):
@@ -240,14 +235,14 @@ OLLAMA_BASE_URL=http://localhost:11434
 ### For `premium` mode (Anthropic):
 ```bash
 LLM_PROVIDER=premium
-ANTHROPIC_API_KEY=sk-ant-...
+# ANTHROPIC_API_KEY=sk-ant-...  (future upgrade only)
 ```
 
 ### For `hybrid` mode:
 ```bash
 LLM_PROVIDER=hybrid
 GROQ_API_KEY=gsk_...
-ANTHROPIC_API_KEY=sk-ant-...   # NBA Agent only
+# ANTHROPIC_API_KEY=sk-ant-...  (future upgrade only)   # NBA Agent only
 ```
 
 ---
@@ -311,7 +306,7 @@ pip install -e ".[poc,anthropic_provider]"
 | NBA | ⚠️ Good but less nuanced than Opus | Medium-High | Use `hybrid` mode for live demos; `free_cloud` for testing |
 | Audit | ✅ Excellent — structured logging, simple reasoning | Low | None needed |
 
-**Verdict:** For PoC development and testing, `free_cloud` mode produces outputs that demonstrate the architecture correctly. For the final client demo where NBA recommendation quality is showcased, use `hybrid` mode (NBA = Anthropic Opus, everything else = Groq free).
+**Verdict:** For this PoC, `free_cloud` mode (Groq) is the only active mode. It produces correct, high-quality outputs for all agents at zero cost. `hybrid` and `premium` modes are documented as future upgrade paths.
 
 ---
 
@@ -341,7 +336,7 @@ with st.sidebar:
 | Local development and unit testing | `local` (Ollama Llama 3.2 3B) |
 | CI/CD integration tests | `free_cloud` (Groq — fast, no hardware needed) |
 | Internal FDE demo / PoC walkthrough | `free_cloud` (Groq — $0, full pipeline quality) |
-| Live client demo (NBA quality critical) | `hybrid` (Groq + Anthropic NBA only) |
-| Production pilot | `premium` (All Anthropic) |
+| Live client demo | `free_cloud` (Groq — $0, full quality for PoC) |
+| Production pilot | `premium` (Anthropic) — *future upgrade, not PoC scope* |
 
-**Default for this PoC: `LLM_PROVIDER=free_cloud` (Groq)** — zero cost, no credit card, full pipeline functionality.
+**PoC uses exclusively: `LLM_PROVIDER=free_cloud` (Groq Llama 3.3 70B)** — zero cost, no credit card, full pipeline working end-to-end.

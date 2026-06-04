@@ -260,7 +260,7 @@ services:
 
 **Streamlit secrets format (`.streamlit/secrets.toml` — git-ignored):**
 ```toml
-ANTHROPIC_API_KEY = "sk-ant-..."
+GROQ_API_KEY      = "gsk_..."   # Free — console.groq.com
 API_URL           = "https://fde-collection-api.onrender.com"
 ```
 
@@ -271,7 +271,7 @@ API_URL           = "https://fde-collection-api.onrender.com"
 | Service type | Web Service |
 | Runtime | Docker (pulls from GHCR) |
 | Deploy trigger | Webhook from GitHub Actions on `main`/`develop` push |
-| Environment | `ANTHROPIC_API_KEY`, `DATABASE_URL`, `OTEL_ENDPOINT` set in Render dashboard |
+| Environment | `GROQ_API_KEY`, `DATABASE_URL`, `OTEL_ENDPOINT` set in Render dashboard |
 | Free tier caveat | Service sleeps after 15 min idle; cold-start ~30s (acceptable for PoC) |
 | Health check | `GET /health` — Render uses this to verify deploy success |
 
@@ -284,7 +284,7 @@ services:
     dockerfilePath: docker/Dockerfile.api
     healthCheckPath: /health
     envVars:
-      - key: ANTHROPIC_API_KEY
+      - key: GROQ_API_KEY
         sync: false               # set manually in Render dashboard
       - key: DATABASE_URL
         value: sqlite:///data/collection_assistant.db
@@ -308,7 +308,7 @@ services:
 
 | Secret | Where Stored | How Accessed |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | GitHub Secrets + Render env + Streamlit secrets | `os.environ` via pydantic-settings |
+| `GROQ_API_KEY` | GitHub Secrets + Render env + Streamlit secrets | Free key — console.groq.com |
 | `RENDER_PROD_DEPLOY_HOOK` | GitHub Secrets | Used in CI deploy step only |
 | `RENDER_STAGING_DEPLOY_HOOK` | GitHub Secrets | Used in CI deploy step only |
 | `GRAFANA_OTLP_ENDPOINT` | Render env vars | OTel exporter config |
@@ -316,7 +316,7 @@ services:
 
 **Rules:**
 - Never commit secrets to git — `.env` and `secrets.toml` are git-ignored
-- Rotate API keys if accidentally exposed — invalidate immediately in Anthropic console
+- Rotate `GROQ_API_KEY` if accidentally exposed — invalidate immediately in Groq console (console.groq.com)
 - Use GitHub environment protection rules to restrict prod secrets to `main` branch only
 
 ---
@@ -332,7 +332,7 @@ pip install -e ".[dev]"
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env — set ANTHROPIC_API_KEY
+# Edit .env — set GROQ_API_KEY (free at console.groq.com)
 
 # 3. Seed the database
 python scripts/seed_db.py

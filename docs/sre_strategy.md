@@ -53,7 +53,7 @@ SLOs define the reliability targets we commit to maintaining. These are set cons
 |---|---|
 | 99% availability | Render free tier has cold starts (~30s); 1% downtime budget accommodates occasional cold starts and deploy windows |
 | 15s p95 latency | Two parallel stages + NBA synthesis; 99th percentile measured at ~12s in testing; 15s gives headroom |
-| 95% pipeline success | LLM API is external; 5% budget covers transient Anthropic API errors and retry exhaustion |
+| 95% pipeline success | LLM API is external; 5% budget covers transient Groq API errors and retry exhaustion |
 | 2% agent error rate | Per-agent; each agent has 3 retries before failing, so 2% reflects genuine failures not transient blips |
 
 ---
@@ -202,7 +202,7 @@ UptimeRobot (service down)
 
 5. MITIGATE (stop the bleeding)
    ├── If API down on Render → check Render dashboard → redeploy if needed
-   ├── If LLM API errors → check Anthropic status page → wait or reduce load
+   ├── If LLM API errors → check Groq status page (status.groq.com) → wait or reduce load
    ├── If DB corrupt → run `python scripts/reset_db.py` to reseed
    └── If bad deploy → roll back via Render dashboard (previous deploy)
 
@@ -221,7 +221,7 @@ UptimeRobot (service down)
 
 | Failure Mode | Symptoms | Mitigation |
 |---|---|---|
-| Anthropic API timeout | NBA / Orchestrator agent times out; `agent_failed` logs | 3 retries with exponential backoff (already configured). If persistent, Anthropic status page |
+| Groq API timeout | NBA / Orchestrator agent times out; `agent_failed` logs | 3 retries with exponential backoff (already configured). If persistent, check status.groq.com |
 | Render cold start | First request after 15 min idle takes ~30s | UptimeRobot ping every 5 min keeps it warm (use a dedicated keep-warm monitor) |
 | SQLite locked | `OperationalError: database is locked` in logs | SQLite allows only one writer; ensure single-instance deploy (Render free = 1 instance) |
 | LangGraph state corruption | Workflow stuck in `in_progress` | Timeout guard in Orchestrator (30s max per agent); dead-letter log in `error_log` field |
@@ -243,7 +243,7 @@ Run this before every production deploy:
 **Deployment:**
 - [ ] Render staging deploy succeeded before promoting to prod
 - [ ] Environment variables verified in Render dashboard
-- [ ] Anthropic API key valid (test with a quick `/health` call after deploy)
+- [ ] `GROQ_API_KEY` valid and set in Render env vars (free — console.groq.com)
 - [ ] SQLite DB seeded on fresh deploy (`seed_db.py` run)
 
 **Observability:**
@@ -285,4 +285,4 @@ This table shows what is implemented in the PoC vs what a production SRE practic
 | Streamlit Cloud | `https://share.streamlit.io` |
 | GitHub Actions | `https://github.com/ivar06516/ai-fde-collection-assistant/actions` |
 | Incident log | `https://github.com/ivar06516/ai-fde-collection-assistant/issues?label=incident` |
-| Anthropic status | `https://status.anthropic.com` |
+| Groq status | `https://status.groq.com` |

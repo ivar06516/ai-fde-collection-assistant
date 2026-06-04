@@ -49,7 +49,7 @@ Every use case references specific sections of the project documents so that a r
 
 ### Preconditions
 - SQLite database is seeded (`seed_db.py` has been run — see UC-008)
-- `ANTHROPIC_API_KEY` is configured in the deployment environment
+- `GROQ_API_KEY` is configured in the deployment environment (free — console.groq.com)
 - FastAPI backend is running and healthy (`GET /health` returns 200)
 - Streamlit UI is accessible
 
@@ -77,7 +77,7 @@ Every use case references specific sections of the project documents so that a r
 | A2 | Arrears Prediction returns `trajectory = critical` | NBA Agent prefers `escalate_to_legal` or `offer_settlement`; confidence bar reflects urgency |
 | A3 | An agent fails and exhausts 3 retries | Agent row shows ❌ Error; `workflow_status = "error"`; pipeline degrades gracefully; error logged in `error_log` |
 | A4 | Customer ID not found in DB | FastAPI returns 404; UI shows "Customer not found — check ID or re-seed database" |
-| A5 | Anthropic API timeout | Agent retried (exponential backoff × 3); if all fail, `workflow_status = "error"` |
+| A5 | Groq API timeout | Agent retried (exponential backoff × 3); if all fail, `workflow_status = "error"` |
 
 ### Postconditions
 - `workflow_audit` table record written with full `CollectionWorkflowState` JSON
@@ -135,9 +135,9 @@ Every use case references specific sections of the project documents so that a r
 | Dimension | Reference | Detail |
 |---|---|---|
 | **Requirements** | §2.2.2 (Customer Profile Agent), §5.2 (`customers` + `interaction_history` tables), §6.1 Stage 1 | Agent definition, DB schema, pipeline position |
-| **Deployment** | Render.com (FastAPI + SQLite); Groq Llama 3.3 70B via Anthropic API | Agent runs in FastAPI service; queries local SQLite file |
+| **Deployment** | Render.com (FastAPI + SQLite); Groq Llama 3.3 70B via Groq API (free) | Agent runs in FastAPI service; queries local SQLite file |
 | **Observability** | `agent_execution_duration_seconds{agent="customer_profile"}` histogram; `agent_started` + `agent_complete` log events; child span `stage1.customer_profile` in Tempo trace | Per-agent latency tracked. Trace shows this as a parallel sibling of Account Profile Agent |
-| **SRE** | Agent error rate SLO ≤ 2%; Alert: `agent_failed` log event triggers error-rate alert; Runbook §8.3 "LLM API timeout" | Risk: if Anthropic API is slow, Stage 1 is the bottleneck. Parallel execution with Account Profile mitigates partial slowness |
+| **SRE** | Agent error rate SLO ≤ 2%; Alert: `agent_failed` log event triggers error-rate alert; Runbook §8.3 "LLM API timeout" | Risk: if Groq API is slow, Stage 1 is the bottleneck. Parallel execution with Account Profile mitigates partial slowness |
 
 ---
 
@@ -573,11 +573,11 @@ This table shows which requirements sections, deployment platforms, observabilit
 | Use Case | Requirements §§ | Deployment Platform | Key Observability Signal | SRE Concern |
 |---|---|---|---|---|
 | UC-001 Run Analysis | §2.1, §2.2.1–7, §10.2, §11 | Render + Streamlit Cloud | `collection_workflow_total`, root trace span | p95 ≤ 15s SLO, success rate ≥ 95% |
-| UC-002 Customer Profile | §2.2.2, §5.2 | Render + SQLite + Anthropic | `agent_execution_duration{customer_profile}` | Agent error rate ≤ 2% |
-| UC-003 Account Profile | §2.2.3, §5.2 | Render + SQLite + Anthropic | `db_query_duration_seconds` | SQLite single-writer constraint |
-| UC-004 Arrears Prediction | §2.2.4, §6.1, §10.2 | Render + Anthropic | `arrears_trajectory_distribution` counter | NBA quality degrades if this fails |
-| UC-005 Dispute Detection | §2.2.5, §5.2, §6.2 | Render + SQLite + Anthropic | `dispute_hold_triggered_total` | Hard compliance constraint — zero tolerance for miss |
-| UC-006 NBA Recommendation | §2.2.6, §6.1, §10.2 | Render + Anthropic Opus | `nba_action_recommended_total` | NBA rate ≥ 98%; highest cost agent |
+| UC-002 Customer Profile | §2.2.2, §5.2 | Render + SQLite + Groq (free) | `agent_execution_duration{customer_profile}` | Agent error rate ≤ 2% |
+| UC-003 Account Profile | §2.2.3, §5.2 | Render + SQLite + Groq (free) | `db_query_duration_seconds` | SQLite single-writer constraint |
+| UC-004 Arrears Prediction | §2.2.4, §6.1, §10.2 | Render + Groq (free) | `arrears_trajectory_distribution` counter | NBA quality degrades if this fails |
+| UC-005 Dispute Detection | §2.2.5, §5.2, §6.2 | Render + SQLite + Groq (free) | `dispute_hold_triggered_total` | Hard compliance constraint — zero tolerance for miss |
+| UC-006 NBA Recommendation | §2.2.6, §6.1, §10.2 | Render + Groq free (llama-3.3-70b-versatile) | `nba_action_recommended_total` | NBA rate ≥ 98% |
 | UC-007 Audit Trail | §2.2.7, §5.2, §10.2, §11 | Render + SQLite | Loki query by `workflow_id` | Append-only audit record integrity |
 | UC-008 Seed Database | §5.1–5.5 | Render (SQLite), Streamlit sidebar | DB startup row count logs | Must re-run on every fresh Render deploy |
 | UC-009 Quick Demo | §5.3, §10.2 Screen 1 | Streamlit session state + SQLite | `trigger_context` label in metrics | Render cold-start is demo blocker |

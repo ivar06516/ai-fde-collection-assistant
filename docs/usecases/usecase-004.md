@@ -111,6 +111,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §2.2.4 Arrears Prediction Agent, §6.1 Stage 2, §10.2 Screen 3 Arrears Card, §Q8 (resolved — 3 chart types) |
-| **Deployment** | Render.com FastAPI; Anthropic API (`llama-3.3-70b-versatile`); no additional DB query (uses Stage 1 state) |
+| **Deployment** | Render.com FastAPI; Groq API (free, `llama-3.3-70b-versatile`); no additional DB query (uses Stage 1 state) |
 | **Observability** | `arrears_trajectory_distribution{trajectory}` counter (key portfolio-health business metric); `agent_execution_duration_seconds{agent="arrears_prediction"}` histogram; `stage2.arrears_prediction` Tempo span with `arrears.trajectory` + `arrears.default_probability` attributes; Grafana Dashboard 3 Business Metrics |
 | **SRE** | Agent error rate SLO ≤ 2%; p95 target < 3s for this agent; NBA recommendation quality degrades if this agent fails — treated as P2 impact even in partial failure |

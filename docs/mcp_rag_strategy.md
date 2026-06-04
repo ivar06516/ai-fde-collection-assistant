@@ -4,7 +4,7 @@
 
 ### Step 1 — Why MCP Here?
 
-The current agents call Python functions directly (e.g., `get_customer_demographics` queries SQLite). This couples the agent logic to the data layer. MCP (Model Context Protocol) is Anthropic's open standard for connecting models to tools and data sources — it acts as a plug-in interface.
+The current agents call Python functions directly (e.g., `get_customer_demographics` queries SQLite). This couples the agent logic to the data layer. MCP (Model Context Protocol) is an open standard for connecting models to tools and data sources — it acts as a plug-in interface (provider-agnostic).
 
 **The problem it solves for this PoC:** If a client wants to replace the SQLite mock with their real Salesforce CRM, every agent tool function must be rewritten. With MCP, only the MCP server changes — the agent code stays the same.
 
@@ -30,7 +30,7 @@ The current NBA Agent reasons over the four upstream profiles using only Groq Ll
 
 | Component | Technology | Cost | Rationale |
 |---|---|---|---|
-| MCP servers | `mcp` Python SDK (stdio servers) | Free (pip package) | Runs as subprocesses; Anthropic SDK has built-in client |
+| MCP servers | `mcp` Python SDK (stdio servers) | Free (pip package) | Runs as subprocesses; uses `StdioClientSession` (provider-agnostic) |
 | Vector store | `chromadb` (embedded, file-based) | Free | No server — like SQLite for vectors; persists to `data/chroma/` |
 | Embeddings | `sentence-transformers/all-MiniLM-L6-v2` | Free (no API cost) | ~90MB model; 384-dim embeddings; fast on CPU |
 | Policy documents | Synthetic markdown files in `rag/documents/` | Free | 4 documents covering policy, NBA guide, dispute guide, compliance |
@@ -58,7 +58,7 @@ This is a **PoC overlay** on the existing architecture — existing agents conti
 │                                                  │
 │  Customer Profile Agent ──┐                      │
 │  Account Profile Agent ───┤──► MCP Client        │
-│  Dispute Agent ───────────┘    (Anthropic SDK)   │
+│  Dispute Agent ───────────┘  (StdioClientSession) │
 │                                │                 │
 │  NBA Agent ────────────────────┤                 │
 │                                │                 │
@@ -253,13 +253,11 @@ async def list_tools() -> list[Tool]:
 
 ### 2.3 Connecting Agents to MCP Servers
 
-With the Anthropic Python SDK, agents connect to MCP servers before making LLM calls:
+With the standard `mcp` Python client, agents connect to MCP servers before making LLM calls:
 
 ```python
 # src/collection_assistant/agents/customer_profile.py
-import anthropic
-
-client = anthropic.Anthropic()
+from mcp.client.stdio import StdioClientSession, stdio_client
 
 async def run_customer_profile_agent(customer_id: str) -> CustomerProfile:
     response = client.beta.messages.create(
@@ -623,7 +621,7 @@ Agent                 [MCP: crm-data]
 
 ```
 # MCP
-mcp>=1.0.0                    # MCP server + client SDK (Anthropic's open protocol)
+mcp>=1.0.0                    # MCP server + client SDK (open protocol — provider-agnostic)
 
 # RAG / Vector Store
 chromadb>=0.5.0               # Embedded vector store (no server, file-based)
@@ -692,6 +690,6 @@ scripts/
 
 **MCP story:** "Today, agents query a local SQLite database. With MCP, the data server is the only thing that changes when we connect to your real Salesforce CRM — the agents, the NBA logic, the UI — none of it changes."
 
-**RAG story:** "The NBA recommendation is no longer just Claude's reasoning over raw numbers. It's grounded in your actual collection policy documents and informed by what worked in similar past cases. You can see exactly what was retrieved and why it influenced the recommendation — full explainability."
+**RAG story:** "The NBA recommendation is no longer just Groq Llama's reasoning over raw numbers. It's grounded in your actual collection policy documents and informed by what worked in similar past cases. You can see exactly what was retrieved and why it influenced the recommendation — full explainability."
 
 **Combined story:** "This is the architecture pattern for production-grade agentic AI in financial services: standardised tool integration via MCP, knowledge-grounded decisions via RAG, and full observability across both."

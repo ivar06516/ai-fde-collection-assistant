@@ -74,7 +74,7 @@ Each use case is a standalone document structured with: Overview, Preconditions,
 |---|---|
 | Render.com (FastAPI + SQLite) | UC-001 through UC-008 |
 | Streamlit Community Cloud (UI) | UC-001, UC-007, UC-009 |
-| Anthropic API | UC-002, UC-003, UC-004, UC-005, UC-006, UC-007 |
+| Groq API (free) | UC-002, UC-003, UC-004, UC-005, UC-006, UC-007 |
 | GitHub Actions | UC-012 |
 | Grafana Cloud | UC-010, UC-011 |
 | UptimeRobot | UC-010, UC-011 |

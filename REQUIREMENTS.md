@@ -194,8 +194,7 @@ This is a **PoC scope** — functional enough to demonstrate the multi-agent pat
 
 ```
 # LLM Providers (install the one matching LLM_PROVIDER env var)
-anthropic>=0.40.0              # premium / hybrid NBA agent (optional for free_cloud)
-langchain-anthropic>=0.3.0     # LangChain <-> Anthropic (premium / hybrid)
+# anthropic + langchain-anthropic: future upgrade only — not required for PoC
 langchain-groq>=0.2.0          # free_cloud mode — Groq free tier (recommended default)
 langchain-ollama>=0.2.0        # local mode — Ollama local models
 
@@ -250,20 +249,19 @@ Full strategy: [`docs/llm_provider_strategy.md`](docs/llm_provider_strategy.md)
 |---|---|---|---|
 | `free_cloud` **(PoC default)** | Groq free tier | **$0** | All development, CI tests, internal demos |
 | `local` | Ollama (local machine) | **$0** | Offline dev, data-sensitive environments |
-| `hybrid` | Groq (agents 1–5) + Anthropic (NBA only) | ~$0.01–0.02/run | Live client demo where NBA quality matters |
-| `premium` | Anthropic only | ~$0.05–0.10/run | Production pilot |
+| `hybrid`/`premium` | Anthropic (future) | Paid | *Future upgrade — not PoC scope* |
 
 #### Per-Agent Model Assignment
 
-| Agent | `free_cloud` (Groq) | `local` (Ollama) | `premium` (Anthropic) | `hybrid` |
+| Agent | `free_cloud` (Groq) — **active PoC** | `local` (Ollama) |
 |---|---|---|---|---|
-| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
-| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
-| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
-| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
-| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` | `llama-3.3-70b-versatile` | `llama-3.3-70b-versatile` |
-| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` | `llama-3.3-70b-versatile` | **`llama-3.3-70b-versatile`** ← only Anthropic call |
-| Audit | `llama-3.1-8b-instant` | `phi4:latest` | `llama-3.1-8b-instant` | `llama-3.1-8b-instant` |
+| Orchestrator | `llama-3.3-70b-versatile` | `llama3.2:3b` |
+| Customer Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` |
+| Account Profile | `llama-3.3-70b-versatile` | `llama3.2:3b` |
+| Arrears Prediction | `llama-3.3-70b-versatile` | `llama3.2:3b` |
+| Dispute | `llama-3.3-70b-versatile` | `llama3.2:3b` |
+| NBA | `llama-3.3-70b-versatile` | `llama3.1:8b` |
+| Audit | `llama-3.1-8b-instant` | `phi4:latest` |
 
 #### Implementation: `LLMClientFactory`
 
@@ -280,18 +278,15 @@ def get_llm(agent_name: str, settings: Settings):
         from langchain_ollama import ChatOllama
         return ChatOllama(model=model_id, base_url=settings.ollama_base_url, temperature=0)
     else:  # premium or hybrid
-        if "claude" in model_id:
-            from langchain_anthropic import ChatAnthropic
-            return ChatAnthropic(model=model_id, api_key=settings.anthropic_api_key, temperature=0)
-        else:
-            from langchain_groq import ChatGroq
-            return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
+        # Groq handles all modes in PoC
+        from langchain_groq import ChatGroq
+        return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
 ```
 
-#### Note on MCP With Non-Anthropic Providers
-The Anthropic SDK's `mcp_servers=[]` shortcut only works with Anthropic. For Groq/Ollama, the standard `mcp` Python client (`StdioClientSession`) is used directly — fully provider-agnostic. See `docs/mcp_rag_strategy.md §2.3`.
+#### MCP Implementation
+The standard `mcp` Python client (`StdioClientSession`) is used directly — fully provider-agnostic. Works with Groq, Ollama, or any future LLM provider. See `docs/mcp_rag_strategy.md §2.3`.
 
-**Prompt caching** applies only in `premium` / `hybrid` modes when Anthropic is the active provider.
+**Prompt caching** is not used in the PoC (applies to Anthropic premium mode only — future upgrade path).
 
 ---
 
@@ -762,7 +757,7 @@ Stage 4               Audit Agent logs hold decision with dispute ID + arrears c
 All tools must conform to this interface for the Claude tool-use API:
 
 ```python
-from anthropic.types import ToolParam
+from mcp.types import Tool as ToolParam
 
 def build_tool_schema(name: str, description: str, input_schema: dict) -> ToolParam:
     return {
@@ -796,8 +791,7 @@ class Settings(BaseSettings):
     # Groq (free_cloud / hybrid non-NBA agents)
     groq_api_key: str = ""                 # Free at console.groq.com — no credit card
 
-    # Anthropic (premium / hybrid NBA agent only)
-    anthropic_api_key: str = ""            # Leave blank for free_cloud mode
+    # anthropic_api_key not needed for PoC (free_cloud mode uses Groq only)
 
     # Ollama (local mode — no key needed)
     ollama_base_url: str = "http://localhost:11434"
@@ -1272,7 +1266,7 @@ Two PoC extensions that showcase advanced agentic patterns on top of the existin
 
 ### 14.2 MCP Architecture
 
-Three MCP servers run as stdio subprocesses alongside FastAPI. Agents use the Anthropic SDK MCP client instead of calling Python functions directly.
+Three MCP servers run as stdio subprocesses alongside FastAPI. Agents use the `mcp` Python client (`StdioClientSession`) instead of calling Python functions directly.
 
 | Server | Name | Exposes |
 |---|---|---|

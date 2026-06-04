@@ -16,7 +16,7 @@
 ## Preconditions
 
 - SQLite DB is seeded (UC-008 completed)
-- `ANTHROPIC_API_KEY` is set in the deployment environment
+- `GROQ_API_KEY` is set in the deployment environment (free — console.groq.com)
 - FastAPI backend is running — `GET /health` returns `{"status": "healthy"}`
 - Streamlit UI is accessible at `https://fde-collection-assistant.streamlit.app`
 
@@ -48,7 +48,7 @@
 | AF-02 | `arrears_trajectory = critical` | NBA card shows `escalate_to_legal` or `offer_settlement` |
 | AF-03 | Agent fails and exhausts 3 retries | Agent row shows ❌; `workflow_status = "error"`; error_log populated; graceful degradation |
 | AF-04 | Customer ID not found in DB | FastAPI 404; UI shows "Customer not found — re-seed database" |
-| AF-05 | Anthropic API timeout | Exponential backoff × 3; if all fail, `workflow_status = "error"` |
+| AF-05 | Groq API timeout | Exponential backoff × 3; if all fail, `workflow_status = "error"` |
 
 ---
 
@@ -66,8 +66,8 @@
 ### AC-001-01: Pipeline Completes Within SLO
 - **Given** a seeded DB with a valid `customer_id` and `account_id`
 - **When** the Collection Agent clicks Run Analysis
-- **Then** the full pipeline completes and `workflow_status = "completed"` is returned within **15 seconds** (p95)
-- **Verified by** Phase 11 integration test + Grafana `collection_workflow_duration_seconds` p95 ≤ 15s
+- **Then** the full pipeline completes and `workflow_status = "completed"` is returned within **30 seconds** (p95 — Groq free tier)
+- **Verified by** Phase 11 integration test + Grafana `collection_workflow_duration_seconds` p95 ≤ 30s
 
 ### AC-001-02: All Five Agent Outputs Populated
 - **Given** a successful pipeline run
@@ -94,7 +94,7 @@
 - **Verified by** Phase 11 integration test querying `workflow_audit` after run
 
 ### AC-001-06: Error State Shown on Agent Failure
-- **Given** the Anthropic API returns errors for all 3 retries on a specific agent
+- **Given** the Groq API returns errors for all 3 retries on a specific agent
 - **When** the pipeline runs
 - **Then** the failed agent row in the Execution Panel shows ❌ Error; `workflow_status = "error"`; remaining agents do not execute; UI does not crash
 - **Verified by** Phase 11 integration test with mocked LLM failure
@@ -112,6 +112,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §1.2 Goals, §2.1 Architecture, §2.2.1–2.2.7 All Agents, §10.2 Screens 1–3, §11 API Contract |
-| **Deployment** | Render.com (FastAPI + SQLite), Streamlit Community Cloud (UI) |
+| **Deployment** | Render.com (FastAPI + SQLite), Streamlit Community Cloud (UI), Groq free tier LLM |
 | **Observability** | `collection_workflow_total` counter, `collection_workflow_duration_seconds` histogram, root Tempo trace span per workflow, `workflow_started` + `workflow_complete` Loki log events |
 | **SRE** | SLO: p95 latency ≤ 15s; SLO: pipeline success rate ≥ 95%; Alert: error rate > 10% over 5 min; `sre_strategy.md §8` Incident Runbook |

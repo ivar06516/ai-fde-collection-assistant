@@ -99,6 +99,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §2.2.3 Account Profile Agent, §5.2 `accounts` + `payment_history` schema, §6.1 Stage 1 |
-| **Deployment** | Render.com FastAPI + local SQLite; Anthropic API (`llama-3.3-70b-versatile`); SQLite single-writer constraint means read queries are safe in parallel with UC-002 |
+| **Deployment** | Render.com FastAPI + local SQLite; Groq API (free, `llama-3.3-70b-versatile`); SQLite single-writer constraint means read queries are safe in parallel with UC-002 |
 | **Observability** | `agent_execution_duration_seconds{agent="account_profile"}` histogram; `db_query_duration_seconds` histogram (most expensive DB call — 18-row join); `stage1.account_profile` Tempo span |
 | **SRE** | Agent error rate SLO ≤ 2%; DB query latency alert > 500ms; `payment_history` data availability is prerequisite for UC-004 (Arrears Prediction) quality |

@@ -18,7 +18,7 @@
 - Code change is committed on a `feature/*` branch
 - `.github/workflows/ci.yml` is present and configured
 - `RENDER_PROD_DEPLOY_HOOK` and `RENDER_STAGING_DEPLOY_HOOK` are set as GitHub Secrets
-- Anthropic API key is set in both Render.com environment and GitHub Secrets
+- `GROQ_API_KEY` is set in both Render.com environment and GitHub Secrets (free — console.groq.com)
 - Branch protection: `main` and `develop` require all checks to pass before merge
 
 ---

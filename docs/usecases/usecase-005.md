@@ -106,6 +106,6 @@
 | Dimension | Reference |
 |---|---|
 | **Requirements** | `REQUIREMENTS.md` §2.2.5 Dispute Agent, §5.2 `disputes` table schema, §6.1 Stage 2, §6.2 Dispute Hold Path |
-| **Deployment** | Render.com FastAPI + SQLite `disputes` table; Anthropic API (`llama-3.3-70b-versatile`) |
+| **Deployment** | Render.com FastAPI + SQLite `disputes` table; Groq API (free, `llama-3.3-70b-versatile`) |
 | **Observability** | `dispute_hold_triggered_total` counter (compliance business metric); `agent_execution_duration_seconds{agent="dispute"}` histogram; `dispute_hold_triggered` WARNING Loki event; `stage2.dispute` Tempo span with `dispute.hold` boolean attribute; Alert: hold rate > 30% of runs in 1h |
 | **SRE** | **Zero tolerance for missed hold** — AC-005-05 must pass in every integration test run before any production deploy; Agent error rate SLO ≤ 2%; if Dispute Agent fails, NBA must not produce outbound contact recommendations (pipeline must error, not default to no-hold) |

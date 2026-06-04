@@ -21,14 +21,16 @@ MODEL_MAP: dict[LLMProvider, dict[str, str]] = {
         "nba":                "llama3.1:8b",
         "audit":              "phi4:latest",
     },
+    # premium / hybrid: future upgrade paths — not active for PoC
+    # Add Anthropic model IDs here when upgrading beyond free_cloud
     LLMProvider.PREMIUM: {
-        "orchestrator":       "claude-sonnet-4-6",
-        "customer_profile":   "claude-sonnet-4-6",
-        "account_profile":    "claude-sonnet-4-6",
-        "arrears_prediction": "claude-sonnet-4-6",
-        "dispute":            "claude-sonnet-4-6",
-        "nba":                "claude-opus-4-8",
-        "audit":              "claude-haiku-4-5-20251001",
+        "orchestrator":       "llama-3.3-70b-versatile",
+        "customer_profile":   "llama-3.3-70b-versatile",
+        "account_profile":    "llama-3.3-70b-versatile",
+        "arrears_prediction": "llama-3.3-70b-versatile",
+        "dispute":            "llama-3.3-70b-versatile",
+        "nba":                "llama-3.3-70b-versatile",
+        "audit":              "llama-3.1-8b-instant",
     },
     LLMProvider.HYBRID: {
         "orchestrator":       "llama-3.3-70b-versatile",
@@ -36,7 +38,7 @@ MODEL_MAP: dict[LLMProvider, dict[str, str]] = {
         "account_profile":    "llama-3.3-70b-versatile",
         "arrears_prediction": "llama-3.3-70b-versatile",
         "dispute":            "llama-3.3-70b-versatile",
-        "nba":                "claude-opus-4-8",
+        "nba":                "llama-3.3-70b-versatile",
         "audit":              "llama-3.1-8b-instant",
     },
 }
@@ -55,9 +57,6 @@ def get_llm(agent_name: str, settings: Settings) -> BaseChatModel:
         return ChatOllama(model=model_id, base_url=settings.ollama_base_url, temperature=0)
 
     # premium or hybrid
-    if "claude" in model_id:
-        from langchain_anthropic import ChatAnthropic
-        return ChatAnthropic(model=model_id, api_key=settings.anthropic_api_key, temperature=0)
-
+    # Groq handles all modes in PoC (premium/hybrid are future upgrade paths)
     from langchain_groq import ChatGroq
     return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)

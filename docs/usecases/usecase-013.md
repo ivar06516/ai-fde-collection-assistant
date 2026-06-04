@@ -9,7 +9,7 @@
 | **Goal** | Agents discover and call tools exposed by MCP servers instead of calling Python functions directly, demonstrating the pluggable integration layer |
 | **Priority** | P1 |
 | **Delivery Phase** | Phase 16 (Data MCP Server), Phase 17 (Policy + Analytics MCP Servers) |
-| **Protocol** | Model Context Protocol (MCP) — Anthropic open standard |
+| **Protocol** | Model Context Protocol (MCP) — open standard (provider-agnostic) |
 | **New Dependencies** | `mcp>=1.0.0` |
 
 ---
@@ -22,7 +22,7 @@
 result = get_customer_demographics(customer_id)
 ```
 
-**After MCP:** Agents use the Anthropic SDK MCP client to call tools on MCP servers:
+**After MCP:** Agents use the `mcp` Python client (`StdioClientSession`) to call tools on MCP servers:
 ```python
 # Via MCP protocol (new)
 response = client.beta.messages.create(
@@ -51,9 +51,9 @@ The agent code and the tool logic are now decoupled by the MCP protocol. Swappin
 
 | Step | Actor | Action | System Response |
 |---|---|---|---|
-| 1 | System | Agent process starts; Anthropic SDK initialises MCP client | SDK spawns MCP server subprocess (`python data_server.py`) via stdio |
+| 1 | System | Agent process starts; `mcp` client initialises `StdioClientSession` | Client spawns MCP server subprocess (`python data_server.py`) via stdio |
 | 2 | System | SDK calls `list_tools` on each MCP server | Server returns tool schemas (name, description, inputSchema) |
-| 3 | System | Claude model receives tool list from MCP server as available tools | Model can now call any tool from the server using the standard tool-use protocol |
+| 3 | System | Groq Llama model receives tool list from MCP server as available tools | Model can now call any tool from the server using the standard tool-use protocol |
 | 4 | System | Model calls `get_customer(customer_id="CUST-001")` | MCP server receives call → queries SQLite → returns JSON result |
 | 5 | System | Model processes result; calls additional tools as needed | Each tool call traced in Audit Trail with server name prefix (`crm-data::get_customer`) |
 | 6 | System | Model returns final structured output | MCP servers remain running for reuse; subprocess stays alive for pipeline duration |
