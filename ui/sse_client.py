@@ -69,3 +69,13 @@ def fetch_accounts() -> list[dict]:
         return resp.json() if resp.status_code == 200 else []
     except Exception:
         return []
+
+
+def fetch_portfolio() -> list[dict]:
+    """Fetch all customers with full account + hold data for the dashboard table."""
+    settings = get_settings()
+    try:
+        resp = httpx.get(f"{settings.streamlit_api_url}/collections/data/portfolio", timeout=10)
+        return resp.json() if resp.status_code == 200 else []
+    except Exception:
+        return []

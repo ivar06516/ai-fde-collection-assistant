@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from collection_assistant.db.queries.account_queries import get_account, list_accounts
+from collection_assistant.db.queries.account_queries import get_account, get_accounts_for_customer, list_accounts
 from collection_assistant.db.queries.audit_queries import get_audit_record, list_recent_audits
 from collection_assistant.db.queries.customer_queries import get_customer, list_customers
 from collection_assistant.db.session import db_session
@@ -166,6 +166,66 @@ async def recent_audits() -> list:
              "status": r.status, "total_ms": r.total_ms, "created_at": str(r.created_at)}
             for r in records
         ]
+
+
+@router.get("/data/portfolio")
+async def get_portfolio() -> list:
+    """Full customer + account data for the dashboard table."""
+    from collection_assistant.db.models import Customer, Account, Dispute
+    from sqlalchemy import func
+    with db_session() as session:
+        rows = (
+            session.query(Customer, Account)
+            .join(Account, Account.customer_id == Customer.customer_id)
+            .order_by(Account.days_past_due.desc(), Customer.customer_id)
+            .all()
+        )
+        # Active hold lookup
+        holds = {}
+        hold_reasons = {}
+        active_disputes = (
+            session.query(Dispute)
+            .filter(Dispute.status.in_(["open", "under_review", "escalated"]))
+            .all()
+        )
+        for d in active_disputes:
+            if d.collection_hold:
+                holds[d.account_id] = True
+                hold_reasons[d.account_id] = f"{d.dispute_type.replace('_',' ').title()} ({d.dispute_id})"
+
+        dispute_counts = {}
+        for d in active_disputes:
+            dispute_counts[d.account_id] = dispute_counts.get(d.account_id, 0) + 1
+
+        result = []
+        for c, a in rows:
+            dpd = a.days_past_due or 0
+            result.append({
+                "customer_id":       c.customer_id,
+                "account_id":        a.account_id,
+                "full_name":         f"{c.first_name} {c.last_name}",
+                "risk_segment":      c.risk_segment,
+                "hardship_flag":     bool(c.hardship_flag),
+                "hardship_reason":   c.hardship_reason,
+                "employment_status": c.employment_status,
+                "annual_income":     c.annual_income,
+                "preferred_channel": c.preferred_channel,
+                "product_type":      a.product_type,
+                "account_status":    a.account_status,
+                "days_past_due":     dpd,
+                "outstanding_balance": a.outstanding_balance,
+                "original_balance":    a.original_balance,
+                "collection_hold":   holds.get(a.account_id, False),
+                "hold_reason":       hold_reasons.get(a.account_id),
+                "active_disputes":   dispute_counts.get(a.account_id, 0),
+                "arrears_band": (
+                    "current" if dpd == 0 else
+                    "1-30"    if dpd <= 30 else
+                    "31-60"   if dpd <= 60 else
+                    "61-90"   if dpd <= 90 else "90+"
+                ),
+            })
+        return result
 
 
 @router.get("/data/customers")
