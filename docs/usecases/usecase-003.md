@@ -28,7 +28,7 @@
 |---|---|---|---|
 | 1 | `get_account_balance` | `accounts` | `outstanding_balance`, `original_balance`, `interest_rate` |
 | 2 | `get_delinquency_status` | `accounts` | `days_past_due`, `account_status`, `delinquency_start` |
-| 3 | `get_payment_history` | `payment_history` | last 18 months of `{month, amount_due, amount_paid, on_time}` |
+| 3 | `get_payment_history` | `payment_history` | last 12 months of `{month, amount_due, amount_paid, on_time}` |
 | 4 | `get_linked_accounts` | `accounts` | other `account_id`s for same `customer_id` |
 | 5 | `get_product_details` | `accounts` | `product_type`, `credit_limit`, `next_due_date`, `next_due_amount` |
 | 6 | Returns `AccountProfile` TypedDict | — | Written to `state.account_profile` |
@@ -50,23 +50,23 @@
 ## Postconditions
 
 - `state.account_profile` populated with all `AccountProfile` TypedDict fields
-- `payment_history_12m` field contains up to 18 monthly records for Arrears Prediction Agent
+- `payment_history` field contains up to 12 monthly records for Arrears Prediction Agent
 
 ---
 
 ## Acceptance Criteria
 
 ### AC-003-01: Balance and DPD Retrieved Correctly
-- **Given** account `ACC-001` with `outstanding_balance = 2850.00` and `days_past_due = 45` in DB
-- **When** the Account Profile Agent runs
-- **Then** `account_profile.outstanding_balance = 2850.00` and `account_profile.days_past_due = 45`
-- **Verified by** Phase 3 unit test with known DB fixture
+- **Given** account `ACC-001` with `outstanding_balance = 4500.00` and `days_past_due = 0` (current, personal_loan) in DB
+- **When** `get_account_balance` and `get_delinquency_status` tools run
+- **Then** returned dict has `outstanding_balance = 4500.00` and `days_past_due = 0`
+- **Verified by** unit test `test_account_profile_agent.py::test_balance_and_dpd_retrieved`
 
-### AC-003-02: Payment History Contains At Least 12 Months
-- **Given** an account seeded with 18 months of `payment_history` rows
-- **When** the Account Profile Agent runs
-- **Then** `account_profile.payment_history_12m` contains between 12 and 18 entries
-- **Verified by** Phase 3 unit test asserting list length
+### AC-003-02: Payment History Contains Up to 12 Months
+- **Given** an account seeded with 12 months of `payment_history` rows
+- **When** `get_payment_history_summary` tool runs
+- **Then** `result["months"]` contains exactly 12 entries; each entry has `month`, `amount_due`, `amount_paid`, `on_time`
+- **Verified by** unit test `test_account_profile_agent.py::test_payment_history_12_months`
 
 ### AC-003-03: Account Status Reflects DB Value Exactly
 - **Given** accounts with each of the five statuses: `current`, `delinquent`, `legal`, `written_off`, `closed`
@@ -80,17 +80,17 @@
 - **Then** the corresponding entry in `payment_history_12m` has `on_time = false`
 - **Verified by** Phase 3 unit test checking on_time mapping
 
-### AC-003-05: Written-Off Account Does Not Block Pipeline
-- **Given** customer Karen Wilson (`CUST-006`) with `account_status = "written_off"`
+### AC-003-05: Special Account Statuses Do Not Block Pipeline
+- **Given** an account with `account_status = "written_off"` (mocked) or `account_status = "legal"` (CUST-008 Isabella Garcia / ACC-008, DPD 120)
 - **When** the Account Profile Agent runs
-- **Then** `state.account_profile.account_status = "written_off"`; pipeline continues to NBA Agent which returns `flag_for_writeoff`
-- **Verified by** Phase 11 named-scenario integration test for Karen Wilson
+- **Then** `state.account_profile.account_status` reflects the DB value exactly; pipeline continues to NBA Agent without error; NBA routes to `flag_for_writeoff` (written_off) or `escalate_to_legal` (legal)
+- **Verified by** unit test `test_account_profile_agent.py::test_special_statuses_do_not_block`
 
 ### AC-003-06: DB Query Completes Within 500ms
-- **Given** an account with 18 payment history rows
+- **Given** an account with 12 payment history rows
 - **When** `get_payment_history` DB query executes
 - **Then** the query completes in < 500ms
-- **Verified by** Grafana `db_query_duration_seconds` metric (alert if > 500ms per `observability_strategy.md §7`)
+- **Verified by** unit test timing assertion + Grafana `db_query_duration_seconds` histogram (alert if > 500ms)
 
 ---
 

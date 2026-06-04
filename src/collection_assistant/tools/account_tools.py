@@ -1,5 +1,7 @@
 from collection_assistant.db.session import db_session
-from collection_assistant.db.queries.account_queries import get_account, get_payment_history
+from collection_assistant.db.queries.account_queries import (
+    get_account, get_accounts_for_customer, get_payment_history,
+)
 
 
 def get_account_balance(account_id: str) -> dict:
@@ -24,6 +26,20 @@ def get_delinquency_status(account_id: str) -> dict:
             "delinquency_start": str(a.delinquency_start) if a.delinquency_start else None,
             "account_status": a.account_status,
         }
+
+
+def get_linked_accounts(account_id: str) -> dict:
+    """Return other accounts held by the same customer."""
+    with db_session() as session:
+        account = get_account(session, account_id)
+        all_accounts = get_accounts_for_customer(session, account.customer_id)
+        linked = [
+            {"account_id": a.account_id, "product_type": a.product_type,
+             "account_status": a.account_status, "outstanding_balance": a.outstanding_balance}
+            for a in all_accounts
+            if a.account_id != account_id
+        ]
+        return {"customer_id": account.customer_id, "linked_accounts": linked, "count": len(linked)}
 
 
 def get_payment_history_summary(account_id: str) -> dict:

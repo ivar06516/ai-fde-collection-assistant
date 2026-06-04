@@ -11,6 +11,7 @@ from collection_assistant.llm.client_factory import get_llm
 from collection_assistant.tools.account_tools import (
     get_account_balance,
     get_delinquency_status,
+    get_linked_accounts,
     get_payment_history_summary,
 )
 
@@ -35,8 +36,12 @@ Produce a JSON response with these exact fields:
   "payment_history": [{"month": str, "amount_due": float, "amount_paid": float, "on_time": bool}],
   "on_time_payment_rate": float,
   "missed_payments_last_6m": int,
+  "linked_account_ids": [list of account_id strings for other accounts held by this customer],
   "summary": "One-paragraph summary of the account status and payment behaviour"
 }
+
+IMPORTANT: copy these DB values exactly into your JSON (do not change them):
+- account_status must be one of: current | delinquent | legal | written_off | closed
 
 Respond with valid JSON only."""
 
@@ -56,13 +61,19 @@ def run_account_profile_agent(state: CollectionWorkflowState) -> CollectionWorkf
         balance = get_account_balance(account_id)
         delinquency = get_delinquency_status(account_id)
         payment_summary = get_payment_history_summary(account_id)
+        linked = get_linked_accounts(account_id)
 
         data_prompt = f"""Account data to analyse:
 
 BALANCE & PRODUCT: {json.dumps(balance, indent=2)}
 DELINQUENCY STATUS: {json.dumps(delinquency, indent=2)}
 PAYMENT HISTORY (12 months): {json.dumps(payment_summary, indent=2)}
-CUSTOMER ID: {state['customer_id']}"""
+LINKED ACCOUNTS: {json.dumps(linked, indent=2)}
+CUSTOMER ID: {state['customer_id']}
+IMPORTANT — copy these values exactly:
+  account_status = "{delinquency['account_status']}"
+  days_past_due = {delinquency['days_past_due']}
+  outstanding_balance = {balance['outstanding_balance']}"""
 
         settings = get_settings()
         llm = get_llm("account_profile", settings)

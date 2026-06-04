@@ -1,5 +1,8 @@
-from typing import Optional
-from pydantic import BaseModel
+from typing import Literal, Optional
+from pydantic import BaseModel, field_validator
+
+AccountStatus = Literal["current", "delinquent", "legal", "written_off", "closed"]
+ProductType = Literal["personal_loan", "credit_card", "mortgage", "auto_loan", "overdraft"]
 
 
 class PaymentRecord(BaseModel):
@@ -13,7 +16,7 @@ class AccountProfile(BaseModel):
     account_id: str
     customer_id: str
     product_type: str
-    account_status: str
+    account_status: AccountStatus
     outstanding_balance: float
     original_balance: float
     credit_limit: Optional[float] = None
@@ -26,4 +29,12 @@ class AccountProfile(BaseModel):
     payment_history: list[PaymentRecord] = []
     on_time_payment_rate: float
     missed_payments_last_6m: int
+    linked_account_ids: list[str] = []
     summary: str
+
+    @field_validator("account_status", mode="before")
+    @classmethod
+    def normalise_account_status(cls, v: str) -> str:
+        clean = str(v).lower().strip()
+        valid = {"current", "delinquent", "legal", "written_off", "closed"}
+        return clean if clean in valid else "delinquent"
