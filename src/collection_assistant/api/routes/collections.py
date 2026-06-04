@@ -9,9 +9,9 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from collection_assistant.db.queries.account_queries import list_accounts
+from collection_assistant.db.queries.account_queries import get_account, list_accounts
 from collection_assistant.db.queries.audit_queries import get_audit_record, list_recent_audits
-from collection_assistant.db.queries.customer_queries import list_customers
+from collection_assistant.db.queries.customer_queries import get_customer, list_customers
 from collection_assistant.db.session import db_session
 from collection_assistant.exceptions import AccountNotFoundError, CustomerNotFoundError
 from collection_assistant.graph.collection_graph import run_collection_pipeline
@@ -59,6 +59,17 @@ def _run_pipeline_with_events(workflow_id: str, customer_id: str,
 
 @router.post("/recommend", response_model=RecommendResponse, status_code=202)
 async def recommend(req: RecommendRequest, background_tasks: BackgroundTasks) -> RecommendResponse:
+    # Pre-flight: validate customer and account exist before starting any background work
+    with db_session() as session:
+        try:
+            get_customer(session, req.customer_id)
+        except CustomerNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Customer {req.customer_id} not found")
+        try:
+            get_account(session, req.account_id)
+        except AccountNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Account {req.account_id} not found")
+
     workflow_id = f"wf-{uuid.uuid4().hex[:12]}"
     event_bus.register(workflow_id)
     _workflow_store[workflow_id] = {"workflow_status": "in_progress"}

@@ -56,10 +56,10 @@
 ## Acceptance Criteria
 
 ### AC-002-01: Demographics Correctly Retrieved
-- **Given** a seeded `customers` record for `CUST-001` (John Smith)
+- **Given** a seeded `customers` record for `CUST-001` (James Chen)
 - **When** the Customer Profile Agent runs
-- **Then** `customer_profile.name = "John Smith"`, `preferred_channel = "mobile"`, `preferred_time = "morning"`, `relationship_tenure_months > 0`
-- **Verified by** Phase 3 unit test with mocked `get_customer_demographics` tool
+- **Then** `customer_profile.full_name = "James Chen"`, `preferred_channel = "mobile"`, `preferred_time = "morning"`, `relationship_tenure_years > 0`
+- **Verified by** unit test `test_customer_profile_agent.py::test_demographics_retrieved`
 
 ### AC-002-02: Risk Segment is One of Four Valid Values
 - **Given** any customer record
@@ -68,10 +68,10 @@
 - **Verified by** Phase 3 unit test checking enum constraint on output
 
 ### AC-002-03: Hardship Flag Surfaces Correctly
-- **Given** customer Robert Davis (`CUST-005`) who has `hardship_flag = 1` and `hardship_reason = "medical"`
+- **Given** customer Emma Patel (`CUST-004`) who has `hardship_flag = 1` and `hardship_reason = "unemployment"`
 - **When** the Customer Profile Agent runs
-- **Then** `customer_profile.hardship_indicators = ["medical"]` and `risk_segment = "hardship"`
-- **Verified by** Phase 11 named-scenario integration test for Robert Davis
+- **Then** `customer_profile.hardship_flag = true`, `hardship_reason = "unemployment"`, and `risk_segment = "hardship"`
+- **Verified by** unit test `test_customer_profile_agent.py::test_hardship_flag_surfaces`
 
 ### AC-002-04: Interaction History Count Matches DB
 - **Given** 2 rows in `interaction_history` for `CUST-001`
@@ -79,17 +79,17 @@
 - **Then** `customer_profile.prior_collection_interactions = 2`
 - **Verified by** Phase 3 unit test with pre-seeded interaction rows
 
-### AC-002-05: Missing Customer Returns Error Gracefully
+### AC-002-05: Missing Customer Returns 404 Before Pipeline Starts
 - **Given** `customer_id = "CUST-INVALID"` which does not exist in the DB
-- **When** the Customer Profile Agent runs
-- **Then** agent raises `CustomerNotFoundError`; `workflow_status = "error"`; no unhandled exception reaches the API layer; HTTP response is 500 with error message
-- **Verified by** Phase 3 unit test with missing customer_id
+- **When** `POST /collections/recommend` is called
+- **Then** FastAPI validates the customer exists **before** starting the pipeline; returns **HTTP 404** `{"detail": "Customer CUST-INVALID not found"}` immediately; no workflow_id is created; no background task is started
+- **Verified by** integration test `test_api_health.py::test_recommend_404_unknown_customer`
 
 ### AC-002-06: Agent Completes Within Latency Budget
 - **Given** a standard customer record with 12 interaction history rows
 - **When** the Customer Profile Agent runs
-- **Then** agent completes in < 5 seconds (p95 target for a Sonnet Stage 1 agent)
-- **Verified by** Phase 11 integration test timing + Grafana `agent_execution_duration_seconds{agent="customer_profile"}` p95
+- **Then** agent completes in < 15 seconds (p95 target for Groq free tier); DB tool calls complete in < 50ms each
+- **Verified by** integration test timing + Grafana `agent_execution_duration_seconds{agent="customer_profile"}` p95 ≤ 15s
 
 ---
 
