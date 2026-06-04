@@ -1,14 +1,23 @@
 from datetime import datetime, timezone
 
 
+_AGENT_STATUS_KEYS = {
+    # output state key  ->  agent_statuses key
+    "customer_profile":  "customer_profile",
+    "account_profile":   "account_profile",
+    "arrears_prediction":"arrears_prediction",
+    "dispute_summary":   "dispute",          # state key differs from status key
+    "nba_recommendation":"nba",              # state key differs from status key
+}
+
+
 def build_audit_record(workflow_id: str, state: dict) -> dict:
     agent_steps = []
-    for agent_name in ["customer_profile", "account_profile", "arrears_prediction",
-                        "dispute_summary", "nba_recommendation"]:
-        output = state.get(agent_name)
-        status_info = state.get("agent_statuses", {}).get(agent_name, {})
+    for output_key, status_key in _AGENT_STATUS_KEYS.items():
+        output = state.get(output_key)
+        status_info = state.get("agent_statuses", {}).get(status_key, {})
         agent_steps.append({
-            "agent": agent_name,
+            "agent": output_key,
             "status": status_info.get("status", "unknown"),
             "elapsed_ms": status_info.get("elapsed_ms"),
             "output_keys": list(output.keys()) if isinstance(output, dict) else [],
