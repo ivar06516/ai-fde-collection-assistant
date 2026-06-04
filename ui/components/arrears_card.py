@@ -9,21 +9,33 @@ TRAJECTORY_COLORS = {
 
 
 def _gauge_chart(value: float) -> go.Figure:
+    pct = round(value * 100, 1)
+    # Colour needle red if high risk, orange if medium, green if low
+    bar_color = "#E30000" if pct >= 60 else "#FFA500" if pct >= 30 else "#00B050"
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=value * 100,
-        title={"text": "Default Probability %"},
+        value=pct,
+        number={"suffix": "%", "valueformat": ".1f", "font": {"size": 36, "color": bar_color}},
+        title={"text": "Default Probability", "font": {"size": 14}},
         gauge={
-            "axis": {"range": [0, 100]},
-            "bar": {"color": "#A100FF"},
+            "axis": {"range": [0, 100], "ticksuffix": "%"},
+            "bar": {"color": bar_color, "thickness": 0.25},
+            "bgcolor": "white",
+            "borderwidth": 1,
+            "bordercolor": "#E0E0E0",
             "steps": [
                 {"range": [0, 30], "color": "#E6F4EA"},
                 {"range": [30, 60], "color": "#FFF3E0"},
                 {"range": [60, 100], "color": "#FCE8E6"},
             ],
+            "threshold": {
+                "line": {"color": "#A100FF", "width": 3},
+                "thickness": 0.75,
+                "value": 70,
+            },
         },
     ))
-    fig.update_layout(height=220, margin=dict(l=10, r=10, t=30, b=10))
+    fig.update_layout(height=240, margin=dict(l=20, r=20, t=40, b=10))
     return fig
 
 
@@ -91,13 +103,17 @@ def render_arrears_card(prediction: dict, current_dpd: int = 0) -> None:
         f'{trajectory.upper()}</span>',
         unsafe_allow_html=True,
     )
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Arrears Band", prediction.get("current_arrears_band", "-"))
         st.metric("Confidence", f"{prediction.get('confidence_score', 0):.0%}")
     with col2:
-        st.metric("Pred. Arrears", f"${prediction.get('predicted_arrears_amount', 0):,.2f}")
+        prob_pct = prediction.get("default_probability", 0) * 100
+        st.metric("Default Probability", f"{prob_pct:.1f}%")
         st.metric("DPD @90d", prediction.get("predicted_dpd_90", 0))
+    with col3:
+        st.metric("Pred. Arrears", f"${prediction.get('predicted_arrears_amount', 0):,.2f}")
+        st.metric("DPD @30d", prediction.get("predicted_dpd_30", 0))
 
     tab1, tab2, tab3 = st.tabs(["Default Probability", "DPD Forecast", "Risk Factors"])
     with tab1:
