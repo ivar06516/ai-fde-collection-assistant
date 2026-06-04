@@ -17,7 +17,7 @@
 ## Preconditions
 
 - `state.customer_profile` and `state.account_profile` are populated (Stage 1 complete)
-- `account_profile.payment_history_12m` contains ≥ 3 months of data
+- `account_profile.payment_history` contains ≥ 3 months of data
 - Stage 2 parallel execution started alongside UC-005
 
 ---
@@ -30,7 +30,7 @@
 | 2 | `calculate_arrears_trajectory` | Pattern + DPD history | `improving / stable / deteriorating / critical` |
 | 3 | `predict_default_probability` | Pattern + `risk_segment` + DPD | Float 0.0–1.0 |
 | 4 | `estimate_future_arrears` | Trend rate + current balance | Predicted DPD at +30d, +60d, +90d; projected balance at +30d |
-| 5 | `identify_risk_factors` | Full payment pattern | Ranked list: `[{name, weight}]` sorted by weight descending |
+| 5 | `identify_risk_factors` | Full payment pattern | Ranked list: `[{"name": str, "weight": float}]` sorted by weight descending |
 | 6 | Returns `ArrearsPrediction` TypedDict | — | Written to `state.arrears_prediction` |
 | 7 | SSE event emitted | — | `{"agent":"arrears_prediction","stage":2,"status":"complete"}` |
 
@@ -69,34 +69,34 @@
 - **Verified by** Phase 4 unit test with assertion on float bounds
 
 ### AC-004-03: Deteriorating Account Shows Increasing DPD Forecast
-- **Given** John Smith (`CUST-001`, ACC-001) with 3 consecutive missed payments
-- **When** the Arrears Prediction Agent runs
-- **Then** `predicted_dpd_30d > days_past_due`, `predicted_dpd_60d > predicted_dpd_30d`, `predicted_dpd_90d > predicted_dpd_60d`
-- **Verified by** Phase 11 named-scenario integration test for John Smith
+- **Given** a payment pattern with 3 consecutive missed payments and DPD > 0
+- **When** `estimate_future_arrears` and `calculate_arrears_trajectory` tools run
+- **Then** `predicted_dpd_30 > current_dpd`, `predicted_dpd_60 > predicted_dpd_30`, `predicted_dpd_90 > predicted_dpd_60`
+- **Verified by** unit test `test_arrears_prediction_agent.py::test_deteriorating_dpd_forecast_increases`
 
 ### AC-004-04: Improving Account Shows Decreasing or Stable DPD Forecast
-- **Given** Emily Carter (`CUST-004`) with improving payment pattern
-- **When** the Arrears Prediction Agent runs
-- **Then** `arrears_trajectory = "improving"` and `predicted_dpd_30d ≤ days_past_due`
-- **Verified by** Phase 11 named-scenario integration test for Emily Carter
+- **Given** Emma Patel (`CUST-004`, overdraft, DPD 35, hardship) with recent on-time payments
+- **When** `calculate_arrears_trajectory` tool runs with `trend="improving"`
+- **Then** `arrears_trajectory = "improving"` and `predicted_dpd_30 ≤ current_dpd`
+- **Verified by** unit test `test_arrears_prediction_agent.py::test_improving_dpd_forecast_stable_or_decreasing`
 
 ### AC-004-05: Critical Trajectory for 90+ DPD Account
-- **Given** Michael Tan (`CUST-003`, Mortgage, DPD 92)
-- **When** the Arrears Prediction Agent runs
+- **Given** Michael Okonkwo (`CUST-003`, personal_loan, DPD 92, high risk)
+- **When** `calculate_arrears_trajectory` and `predict_default_probability` tools run
 - **Then** `arrears_trajectory = "critical"` and `default_probability > 0.85`
-- **Verified by** Phase 11 named-scenario integration test for Michael Tan
+- **Verified by** unit test `test_arrears_prediction_agent.py::test_critical_trajectory_high_dpd`
 
 ### AC-004-06: Contributing Factors Returned as Ranked List
 - **Given** any account with identifiable risk patterns
 - **When** `identify_risk_factors` returns
-- **Then** `contributing_factors` is a non-empty list; each entry has `name` (string) and `weight` (float); list is sorted by `weight` descending; weights sum to approximately 1.0 (±0.05)
-- **Verified by** Phase 4 unit test asserting list structure and sort order
+- **Then** `contributing_risk_factors` is a non-empty list of `{"name": str, "weight": float}` dicts; sorted by `weight` descending; each weight is in range 0.0–1.0
+- **Verified by** unit test `test_arrears_prediction_agent.py::test_risk_factors_ranked_list_structure`
 
 ### AC-004-07: Low History Confidence Flagged
 - **Given** an account with only 2 months of payment history
-- **When** the Arrears Prediction Agent runs
-- **Then** `arrears_prediction.confidence < 0.5` and NBA Agent rationale includes the phrase "limited payment history"
-- **Verified by** Phase 4 unit test with truncated payment history fixture
+- **When** `estimate_future_arrears` runs with `months_available < 3`
+- **Then** returned `confidence_score < 0.5`; the agent includes a low-confidence caveat
+- **Verified by** unit test `test_arrears_prediction_agent.py::test_low_history_reduces_confidence`
 
 ### AC-004-08: Three Charts Rendered in UI
 - **Given** a completed pipeline run
