@@ -1,4 +1,4 @@
-"""NBA Agent — synthesises all upstream outputs into the Next Best Action."""
+﻿"""NBA Agent — synthesises all upstream outputs into the Next Best Action."""
 import json
 from datetime import datetime, timezone
 
@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from collection_assistant.config import get_settings
 from collection_assistant.graph.state import CollectionWorkflowState
+from collection_assistant import event_bus
 from collection_assistant.llm.client_factory import get_llm
 from collection_assistant.tools.nba_tools import evaluate_action_eligibility, score_action_options
 
@@ -29,8 +30,11 @@ Produce a JSON response with these exact fields:
   "confidence_score": float (0.0-1.0),
   "urgency": "low|medium|high|critical",
   "alternative_actions": [
+    {"action": str, "rationale": str, "confidence": float},
+    {"action": str, "rationale": str, "confidence": float},
     {"action": str, "rationale": str, "confidence": float}
   ],
+  // IMPORTANT: always include EXACTLY 3 alternative_actions — never fewer
   "policy_constraints_applied": [list of constraint strings that affected the decision],
   "summary": "One sentence NBA recommendation summary"
 }
@@ -46,6 +50,7 @@ def run_nba_agent(state: CollectionWorkflowState) -> CollectionWorkflowState:
         "started_at": started_at.isoformat(), "completed_at": None,
         "elapsed_ms": None, "error": None,
     }
+    event_bus.emit(state["workflow_id"], "agent_update", {"agent": "nba", "stage": 3, "status": "running", "elapsed_ms": None, "error": None})
 
     try:
         customer_profile = state.get("customer_profile") or {}
@@ -114,11 +119,15 @@ TRIGGER CONTEXT: {state.get('trigger_context', 'routine_review')}"""
             "completed_at": datetime.now(timezone.utc).isoformat(),
             "elapsed_ms": elapsed_ms,
         })
+        event_bus.emit(state["workflow_id"], "agent_update", {"agent": "nba", "stage": 3, "status": "completed", "elapsed_ms": elapsed_ms, "error": None})
     except Exception as e:
         elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
         state["agent_statuses"]["nba"].update({
             "status": "error", "error": str(e), "elapsed_ms": elapsed_ms,
         })
+        event_bus.emit(state["workflow_id"], "agent_update", {"agent": "nba", "stage": 3, "status": "error", "elapsed_ms": elapsed_ms, "error": str(e)})
         state["error_log"].append(f"nba: {e}")
 
     return state
+
+

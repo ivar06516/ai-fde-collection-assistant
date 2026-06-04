@@ -1,4 +1,4 @@
-"""Account Profile Agent — full account snapshot."""
+﻿"""Account Profile Agent — full account snapshot."""
 import json
 from datetime import datetime, timezone
 
@@ -6,6 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from collection_assistant.config import get_settings
 from collection_assistant.graph.state import CollectionWorkflowState
+from collection_assistant import event_bus
 from collection_assistant.llm.client_factory import get_llm
 from collection_assistant.tools.account_tools import (
     get_account_balance,
@@ -49,6 +50,7 @@ def run_account_profile_agent(state: CollectionWorkflowState) -> CollectionWorkf
         "started_at": started_at.isoformat(), "completed_at": None,
         "elapsed_ms": None, "error": None,
     }
+    event_bus.emit(state["workflow_id"], "agent_update", {"agent": "account_profile", "stage": 1, "status": "running", "elapsed_ms": None, "error": None})
 
     try:
         balance = get_account_balance(account_id)
@@ -82,11 +84,15 @@ CUSTOMER ID: {state['customer_id']}"""
             "completed_at": datetime.now(timezone.utc).isoformat(),
             "elapsed_ms": elapsed_ms,
         })
+        event_bus.emit(state["workflow_id"], "agent_update", {"agent": "account_profile", "stage": 1, "status": "completed", "elapsed_ms": elapsed_ms, "error": None})
     except Exception as e:
         elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
         state["agent_statuses"]["account_profile"].update({
             "status": "error", "error": str(e), "elapsed_ms": elapsed_ms,
         })
+        event_bus.emit(state["workflow_id"], "agent_update", {"agent": "account_profile", "stage": 1, "status": "error", "elapsed_ms": elapsed_ms, "error": str(e)})
         state["error_log"].append(f"account_profile: {e}")
 
     return state
+
+

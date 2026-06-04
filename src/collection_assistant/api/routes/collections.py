@@ -1,4 +1,4 @@
-"""Collections API routes - trigger pipeline, stream SSE, retrieve audit."""
+﻿"""Collections API routes - trigger pipeline, stream SSE, retrieve audit."""
 import asyncio
 import json
 import uuid
@@ -16,14 +16,12 @@ from collection_assistant.db.session import db_session
 from collection_assistant.exceptions import AccountNotFoundError, CustomerNotFoundError
 from collection_assistant.graph.collection_graph import run_collection_pipeline
 from collection_assistant.graph.state import CollectionWorkflowState
+from collection_assistant import event_bus
 
 router = APIRouter(prefix="/collections")
 
 # In-memory store for active/completed workflows (PoC: replace with Redis for prod)
 _workflow_store: dict[str, CollectionWorkflowState] = {}
-_workflow_events: dict[str, list[dict]] = {}
-
-
 class RecommendRequest(BaseModel):
     customer_id: str
     account_id: str
@@ -35,54 +33,34 @@ class RecommendResponse(BaseModel):
     status: str
 
 
-def _emit_event(workflow_id: str, event_type: str, data: dict) -> None:
-    if workflow_id not in _workflow_events:
-        _workflow_events[workflow_id] = []
-    _workflow_events[workflow_id].append({"type": event_type, "data": data})
-
-
 def _run_pipeline_with_events(workflow_id: str, customer_id: str,
                                account_id: str, trigger_context: str) -> None:
-    """Run pipeline in background thread, emitting events at each stage."""
+    """Run pipeline — agents emit live events via event_bus as they start/complete."""
+    event_bus.emit(workflow_id, "pipeline_started", {
+        "workflow_id": workflow_id,
+        "customer_id": customer_id,
+        "account_id": account_id,
+    })
     try:
-        # Emit initial waiting event
-        _emit_event(workflow_id, "pipeline_started", {
-            "workflow_id": workflow_id,
-            "customer_id": customer_id,
-            "account_id": account_id,
-        })
-
-        # We patch the pipeline to emit events as stages complete
         state = run_collection_pipeline(workflow_id, customer_id, account_id, trigger_context)
         _workflow_store[workflow_id] = state
-
-        # Emit per-agent completion events
-        for agent_name, agent_status in state["agent_statuses"].items():
-            _emit_event(workflow_id, "agent_update", {
-                "agent": agent_name,
-                "stage": agent_status["stage"],
-                "status": agent_status["status"],
-                "elapsed_ms": agent_status.get("elapsed_ms"),
-                "error": agent_status.get("error"),
-            })
-
-        _emit_event(workflow_id, "workflow_complete", {
+        event_bus.emit(workflow_id, "workflow_complete", {
             "workflow_id": workflow_id,
             "status": state["workflow_status"],
             "total_ms": state.get("total_ms"),
         })
     except (CustomerNotFoundError, AccountNotFoundError) as e:
-        _emit_event(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
+        event_bus.emit(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
         _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}
     except Exception as e:
-        _emit_event(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
+        event_bus.emit(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
         _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}
 
 
 @router.post("/recommend", response_model=RecommendResponse, status_code=202)
 async def recommend(req: RecommendRequest, background_tasks: BackgroundTasks) -> RecommendResponse:
     workflow_id = f"wf-{uuid.uuid4().hex[:12]}"
-    _workflow_events[workflow_id] = []
+    event_bus.register(workflow_id)
     _workflow_store[workflow_id] = {"workflow_status": "in_progress"}
 
     background_tasks.add_task(
@@ -95,7 +73,7 @@ async def recommend(req: RecommendRequest, background_tasks: BackgroundTasks) ->
 @router.get("/{workflow_id}/stream")
 async def stream_workflow(workflow_id: str) -> StreamingResponse:
     """SSE endpoint - streams agent events as they arrive."""
-    if workflow_id not in _workflow_events:
+    if workflow_id not in event_bus._queues:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
     async def event_generator() -> AsyncIterator[str]:
@@ -103,7 +81,7 @@ async def stream_workflow(workflow_id: str) -> StreamingResponse:
         max_wait = 60  # seconds
         waited = 0
         while waited < max_wait:
-            events = _workflow_events.get(workflow_id, [])
+            events = event_bus.get_events(workflow_id)
             while seen < len(events):
                 event = events[seen]
                 yield f"data: {json.dumps(event)}\n\n"
@@ -176,3 +154,4 @@ async def get_customers() -> list:
 async def get_accounts() -> list:
     with db_session() as session:
         return [{"id": id_, "label": label} for id_, label in list_accounts(session)]
+
