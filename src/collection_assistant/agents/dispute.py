@@ -88,11 +88,15 @@ PRE-CALCULATED VALUES (copy these exactly into your JSON output):
             HumanMessage(content=data_prompt),
         ])
 
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1].lstrip("json").strip()
+        from collection_assistant.agents import parse_llm_json
+        content = parse_llm_json(response.content)
 
         summary = json.loads(content)
+
+        # COMPLIANCE: always overwrite with DB-authoritative hold values — never trust LLM
+        summary["collection_hold"] = hold_data["collection_hold"]
+        summary["hold_reason"] = hold_data.get("hold_reason") or summary.get("hold_reason")
+        summary["total_open_disputes"] = len(active)
 
         elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
         state["dispute_summary"] = summary

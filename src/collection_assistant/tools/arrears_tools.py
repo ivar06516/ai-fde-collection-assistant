@@ -42,6 +42,8 @@ def predict_default_probability(dpd: int, trajectory: str, risk_segment: str, on
     multipliers = {"critical": 1.5, "deteriorating": 1.3, "stable": 1.0, "improving": 0.7}
     risk_add = {"hardship": 0.15, "high": 0.1, "medium": 0.05, "low": 0.0}
     prob = base * multipliers.get(trajectory, 1.0) + risk_add.get(risk_segment, 0.0)
+    # M-4 fix: on_time_rate reduces/increases probability (100% OTP = -5%, 0% OTP = +5%)
+    prob -= (on_time_rate - 0.5) * 0.10
     return round(min(max(prob, 0.01), 0.99), 2)
 
 

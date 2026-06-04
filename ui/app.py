@@ -153,7 +153,7 @@ elif st.session_state.screen == "results":
         render_account_card(state.get("account_profile") or {})
     c3, c4 = st.columns(2)
     with c3:
-        render_arrears_card(state.get("arrears_prediction") or {})
+        render_arrears_card(state.get("arrears_prediction") or {}, current_dpd=(state.get("account_profile") or {}).get("days_past_due", 0))
     with c4:
         render_dispute_card(state.get("dispute_summary") or {})
     st.markdown("---")

@@ -92,7 +92,8 @@ def _node_nba(state: CollectionWorkflowState) -> CollectionWorkflowState:
 def _node_audit(state: CollectionWorkflowState) -> CollectionWorkflowState:
     started = datetime.fromisoformat(state["started_at"])
     state["total_ms"] = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
-    state["workflow_status"] = "completed"
+    # M-5 fix: reflect errors in final status — do not mark completed if agents failed
+    state["workflow_status"] = "error" if state.get("error_log") else "completed"
     state = run_audit_agent(state)
     state["completed_at"] = datetime.now(timezone.utc).isoformat()
     return state
@@ -112,10 +113,15 @@ def build_collection_graph() -> Any:
     return graph.compile()
 
 
+_COMPILED_GRAPH = None  # M-6 fix: compile once, reuse across all pipeline runs
+
+
 def run_collection_pipeline(
     workflow_id: str, customer_id: str, account_id: str, trigger_context: str
 ) -> CollectionWorkflowState:
     """Synchronous entry point - runs the full pipeline and returns final state."""
-    app = build_collection_graph()
+    global _COMPILED_GRAPH
+    if _COMPILED_GRAPH is None:
+        _COMPILED_GRAPH = build_collection_graph()
     initial_state = _make_initial_state(workflow_id, customer_id, account_id, trigger_context)
-    return app.invoke(initial_state)
+    return _COMPILED_GRAPH.invoke(initial_state)

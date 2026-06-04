@@ -58,7 +58,8 @@ def run_nba_agent(state: CollectionWorkflowState) -> CollectionWorkflowState:
         arrears_prediction = state.get("arrears_prediction") or {}
         dispute_summary = state.get("dispute_summary") or {}
 
-        collection_hold = dispute_summary.get("collection_hold", False)
+        # COMPLIANCE: default True when dispute_summary missing — fail-safe prevents outbound contact
+        collection_hold = dispute_summary.get("collection_hold", True) if dispute_summary else True
         trajectory = arrears_prediction.get("arrears_trajectory", "stable")
         dpd = account_profile.get("days_past_due", 0)
         account_status = account_profile.get("account_status", "current")
@@ -106,11 +107,21 @@ TRIGGER CONTEXT: {state.get('trigger_context', 'routine_review')}"""
             HumanMessage(content=data_prompt),
         ])
 
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1].lstrip("json").strip()
+        from collection_assistant.agents import parse_llm_json
+        content = parse_llm_json(response.content)
 
         recommendation = json.loads(content)
+
+        # COMPLIANCE: programmatic hold enforcement — LLM cannot override dispute hold
+        if collection_hold and recommendation.get("action") not in ("place_on_hold", "no_action_required"):
+            recommendation["action"] = "place_on_hold"
+            recommendation["channel"] = "none"
+            recommendation["rationale"] = (
+                "Collection hold active due to open dispute. Outbound contact is not permitted. "
+                + recommendation.get("rationale", "")
+            )
+            recommendation["policy_constraints_applied"] = ["Collection hold active: outbound contact not permitted"]
+        recommendation["blocked_by_dispute"] = collection_hold
 
         elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
         state["nba_recommendation"] = recommendation

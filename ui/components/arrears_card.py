@@ -78,7 +78,7 @@ def _risk_factors_bar_chart(factors: list) -> go.Figure:
     return fig
 
 
-def render_arrears_card(prediction: dict) -> None:
+def render_arrears_card(prediction: dict, current_dpd: int = 0) -> None:
     st.markdown("### 📊 Arrears Prediction")
     if not prediction:
         st.warning("No arrears prediction data")
@@ -106,7 +106,6 @@ def render_arrears_card(prediction: dict) -> None:
             use_container_width=True,
         )
     with tab2:
-        current_dpd = max(0, prediction.get("predicted_dpd_30", 0) - 10)
         st.plotly_chart(
             _dpd_forecast_chart(
                 current_dpd,

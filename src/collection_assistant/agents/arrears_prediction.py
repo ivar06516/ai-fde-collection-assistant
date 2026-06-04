@@ -112,9 +112,8 @@ EMPLOYMENT: {employment_status}"""
             HumanMessage(content=data_prompt),
         ])
 
-        content = response.content.strip()
-        if content.startswith("```"):
-            content = content.split("```")[1].lstrip("json").strip()
+        from collection_assistant.agents import parse_llm_json
+        content = parse_llm_json(response.content)
 
         prediction = json.loads(content)
 

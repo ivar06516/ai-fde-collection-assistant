@@ -20,8 +20,17 @@ from collection_assistant import event_bus
 
 router = APIRouter(prefix="/collections")
 
-# In-memory store for active/completed workflows (PoC: replace with Redis for prod)
+# In-memory workflow store — capped at 200 entries (M-2 fix: prevent memory leak)
 _workflow_store: dict[str, CollectionWorkflowState] = {}
+_MAX_STORE_SIZE = 200
+
+
+def _evict_oldest_workflow() -> None:
+    if len(_workflow_store) > _MAX_STORE_SIZE:
+        oldest = next(iter(_workflow_store))
+        del _workflow_store[oldest]
+
+
 class RecommendRequest(BaseModel):
     customer_id: str
     account_id: str
@@ -73,6 +82,7 @@ async def recommend(req: RecommendRequest, background_tasks: BackgroundTasks) ->
     workflow_id = f"wf-{uuid.uuid4().hex[:12]}"
     event_bus.register(workflow_id)
     _workflow_store[workflow_id] = {"workflow_status": "in_progress"}
+    _evict_oldest_workflow()
 
     background_tasks.add_task(
         _run_pipeline_with_events,
@@ -88,8 +98,9 @@ async def stream_workflow(workflow_id: str) -> StreamingResponse:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
     async def event_generator() -> AsyncIterator[str]:
+        from collection_assistant.config import get_settings
         seen = 0
-        max_wait = 60  # seconds
+        max_wait = get_settings().agent_timeout_seconds * 6  # m-3 fix: configurable timeout
         waited = 0
         while waited < max_wait:
             events = event_bus.get_events(workflow_id)
@@ -98,8 +109,10 @@ async def stream_workflow(workflow_id: str) -> StreamingResponse:
                 yield f"data: {json.dumps(event)}\n\n"
                 seen += 1
                 if event["type"] == "workflow_complete":
+                    event_bus.cleanup(workflow_id)
                     return
                 if event["type"] == "workflow_error":
+                    event_bus.cleanup(workflow_id)
                     return
             await asyncio.sleep(0.2)
             waited += 0.2
