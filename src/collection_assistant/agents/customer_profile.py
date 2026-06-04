@@ -63,7 +63,10 @@ DEMOGRAPHICS: {json.dumps(demographics, indent=2)}
 CONTACT PREFERENCES: {json.dumps(prefs, indent=2)}
 INTERACTION HISTORY: {json.dumps(interactions, indent=2)}
 HARDSHIP SIGNALS: {json.dumps(hardship, indent=2)}
-RISK SEGMENT (from DB): {demographics.get('risk_segment', 'unknown')}"""
+IMPORTANT - use exactly these DB-sourced values in your JSON output (do not change them):
+  risk_segment = "{demographics.get('risk_segment', 'medium')}" <- copy this exactly
+  hardship_flag = {demographics.get('hardship_flag', False)}
+  hardship_reason = {json.dumps(demographics.get('hardship_reason'))}"""
 
         settings = get_settings()
         llm = get_llm("customer_profile", settings)

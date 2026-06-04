@@ -21,6 +21,9 @@ def get_customer_demographics(customer_id: str) -> dict:
             "relationship_tenure_years": round(
                 (date.today() - c.relationship_since).days / 365.25, 1
             ),
+            "risk_segment": c.risk_segment,
+            "hardship_flag": bool(c.hardship_flag),
+            "hardship_reason": c.hardship_reason,
         }
 
 
