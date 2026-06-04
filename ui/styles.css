@@ -1,0 +1,90 @@
+
+/* Accenture FDE Theme - AI Collection Assistant */
+:root {
+    --accent: #A100FF;
+    --accent-dark: #7B00CC;
+    --nav-bg: #1A1A1A;
+    --card-bg: #FFFFFF;
+    --success: #00B050;
+    --warning: #FFA500;
+    --error: #E30000;
+    --text-primary: #1A1A1A;
+    --text-muted: #666666;
+}
+
+/* Header/Nav */
+.fde-header {
+    background: var(--nav-bg);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.fde-logo-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+/* Cards */
+.agent-card {
+    background: var(--card-bg);
+    border: 1px solid #E0E0E0;
+    border-radius: 10px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.agent-card-header {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+}
+
+/* NBA Recommendation card */
+.nba-card {
+    background: linear-gradient(135deg, #A100FF11 0%, #FFFFFF 100%);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+.nba-action-badge {
+    background: var(--accent);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 1rem;
+    display: inline-block;
+}
+.nba-confidence {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+/* Agent pipeline status rows */
+.pipeline-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    margin-bottom: 0.4rem;
+    background: #F8F8F8;
+}
+.status-waiting { color: var(--text-muted); }
+.status-running { color: var(--warning); }
+.status-completed { color: var(--success); }
+.status-error { color: var(--error); }
+
+/* Risk segment badges */
+.risk-low { background: #E6F4EA; color: #137333; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+.risk-medium { background: #FFF3E0; color: #E65100; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+.risk-high { background: #FCE8E6; color: #C62828; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+.risk-hardship { background: #EDE7F6; color: #4527A0; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
