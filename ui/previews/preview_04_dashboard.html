@@ -1,0 +1,580 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDE Collection Assistant — Customer Dashboard Preview</title>
+<style>
+  :root {
+    --accent: #A100FF;
+    --accent-light: #F3E5F5;
+    --nav-bg: #1A1A1A;
+    --success: #137333;
+    --warning: #E65100;
+    --danger: #C62828;
+    --hardship: #4527A0;
+    --text: #1A1A1A;
+    --muted: #666;
+    --border: #E0E0E0;
+    --card-bg: #fff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #F5F5F5; color: var(--text); }
+
+  /* NAV */
+  .nav { background: var(--nav-bg); padding: 0 1.5rem; height: 52px;
+         display: flex; align-items: center; gap: 1rem; position: sticky; top: 0; z-index: 100; }
+  .nav-logo { color: var(--accent); font-size: 1.2rem; font-weight: 800; letter-spacing: -0.5px; }
+  .nav-sep { color: #555; font-size: 1rem; }
+  .nav-title { color: #ccc; font-size: 0.9rem; }
+  .nav-right { margin-left: auto; display: flex; gap: 0.6rem; align-items: center; }
+  .nav-pill { background: rgba(161,0,255,0.2); color: var(--accent); padding: 3px 10px;
+              border-radius: 10px; font-size: 0.75rem; font-weight: 700; }
+
+  /* PAGE LAYOUT */
+  .page { max-width: 1380px; margin: 0 auto; padding: 1.5rem 1rem; }
+  .page-header { display: flex; align-items: center; justify-content: space-between;
+                 margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem; }
+  .page-title { font-size: 1.4rem; font-weight: 700; }
+  .page-subtitle { color: var(--muted); font-size: 0.85rem; margin-top: 2px; }
+
+  /* KPI CARDS */
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.4rem; }
+  .kpi { background: var(--card-bg); border-radius: 10px; padding: 1rem 1.2rem;
+         border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .kpi-label { font-size: 0.75rem; color: var(--muted); font-weight: 600;
+               text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+  .kpi-value { font-size: 1.9rem; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+  .kpi.accent { border-top: 3px solid var(--accent); }
+  .kpi.danger { border-top: 3px solid var(--danger); }
+  .kpi.warning { border-top: 3px solid var(--warning); }
+  .kpi.success { border-top: 3px solid var(--success); }
+  .kpi.hardship-kpi { border-top: 3px solid var(--hardship); }
+
+  /* FILTER BAR */
+  .filter-bar { background: var(--card-bg); border: 1px solid var(--border);
+                border-radius: 10px; padding: 0.9rem 1.2rem; margin-bottom: 1.2rem;
+                display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; }
+  .filter-bar label { font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 2px; display: block; }
+  .filter-group { display: flex; flex-direction: column; }
+  .filter-bar select, .filter-bar input {
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 0.84rem; color: var(--text); background: #FAFAFA;
+    outline: none; cursor: pointer; }
+  .filter-bar select:focus, .filter-bar input:focus { border-color: var(--accent); }
+  .search-group { flex: 1; min-width: 200px; }
+  .filter-bar input { width: 100%; }
+  .btn { padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer;
+         font-size: 0.84rem; font-weight: 600; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #7B00CC; }
+  .btn-outline { background: white; color: var(--accent); border: 1.5px solid var(--accent); }
+  .btn-outline:hover { background: var(--accent-light); }
+  .filter-actions { margin-left: auto; display: flex; gap: 0.5rem; align-items: flex-end; padding-bottom: 1px; }
+
+  /* TABLE */
+  .table-card { background: var(--card-bg); border: 1px solid var(--border);
+                border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .table-toolbar { padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border);
+                   display: flex; align-items: center; justify-content: space-between; }
+  .table-toolbar-title { font-weight: 700; font-size: 0.95rem; }
+  .table-count { color: var(--muted); font-size: 0.82rem; }
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #FAFAFA; }
+  th { text-align: left; padding: 0.65rem 1rem; font-size: 0.75rem; font-weight: 700;
+       color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;
+       border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--accent); }
+  td { padding: 0.75rem 1rem; font-size: 0.86rem; border-bottom: 1px solid #F5F5F5;
+       vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #FAFAFA; }
+  tr.selected td { background: var(--accent-light); }
+
+  /* BADGES */
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 10px;
+           font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+  .risk-low      { background: #E8F5E9; color: #2E7D32; }
+  .risk-medium   { background: #FFF8E1; color: #E65100; }
+  .risk-high     { background: #FFEBEE; color: #C62828; }
+  .risk-hardship { background: #EDE7F6; color: #4527A0; }
+  .status-current    { background: #E8F5E9; color: #2E7D32; }
+  .status-delinquent { background: #FFF3E0; color: #E65100; }
+  .status-legal      { background: #FFEBEE; color: #C62828; }
+  .status-written_off{ background: #F5F5F5; color: #333; }
+  .product-badge { background: #EDE7F6; color: #4527A0; }
+  .hold-badge { background: #FFEBEE; color: #C62828; }
+  .no-hold-badge { background: #E8F5E9; color: #2E7D32; }
+
+  /* DPD coloring */
+  .dpd-0   { color: #2E7D32; font-weight: 700; }
+  .dpd-low { color: #E65100; font-weight: 700; }
+  .dpd-mid { color: #C62828; font-weight: 700; }
+  .dpd-hi  { color: #7B00CC; font-weight: 700; }
+
+  /* ACTION BUTTON */
+  .btn-run { background: var(--accent); color: white; border: none; border-radius: 6px;
+             padding: 5px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+             transition: all 0.15s; white-space: nowrap; }
+  .btn-run:hover { background: #7B00CC; transform: translateY(-1px);
+                   box-shadow: 0 3px 8px rgba(161,0,255,0.3); }
+
+  /* CUSTOMER NAME CELL */
+  .cust-name { font-weight: 600; }
+  .cust-id   { font-size: 0.72rem; color: var(--muted); font-family: monospace; }
+  .cust-hardship { font-size: 0.72rem; color: #4527A0; margin-top: 1px; }
+
+  /* PAGINATION */
+  .pagination { display: flex; align-items: center; justify-content: space-between;
+                padding: 0.9rem 1.2rem; border-top: 1px solid var(--border);
+                font-size: 0.82rem; color: var(--muted); }
+  .page-btns { display: flex; gap: 0.3rem; }
+  .page-btn { border: 1px solid var(--border); background: white; padding: 4px 10px;
+              border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+  .page-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .page-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+  /* SELECTED PANEL */
+  .selected-panel { background: var(--card-bg); border: 2px solid var(--accent);
+                    border-radius: 10px; padding: 1.2rem 1.5rem; margin-top: 1.2rem;
+                    display: none; }
+  .selected-panel.visible { display: block; }
+  .selected-panel-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+  .selected-panel-title { font-weight: 700; font-size: 1rem; color: var(--accent); }
+  .sp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+  .sp-item label { font-size: 0.73rem; color: var(--muted); font-weight: 600;
+                   text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 2px; }
+  .sp-item span { font-size: 0.92rem; font-weight: 600; }
+  .trigger-select { border: 1px solid var(--border); border-radius: 6px;
+                    padding: 6px 10px; font-size: 0.84rem; }
+
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .sp-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <span class="nav-logo">Accenture</span>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">AI FDE Collection Assistant</span>
+  <div class="nav-right">
+    <span class="nav-pill">🟢 Groq (Free)</span>
+    <span style="color:#888;font-size:0.8rem">100 Customers</span>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">Customer Portfolio Dashboard</div>
+      <div class="page-subtitle">Select a customer to run AI collection analysis · Data refreshes on seed</div>
+    </div>
+    <button class="btn btn-primary" onclick="showRunPanel()">▶ Run Analysis for Selected</button>
+  </div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi accent">
+      <div class="kpi-label">Total Customers</div>
+      <div class="kpi-value">100</div>
+      <div class="kpi-sub">100 accounts linked</div>
+    </div>
+    <div class="kpi danger">
+      <div class="kpi-label">Delinquent</div>
+      <div class="kpi-value" style="color:#C62828">51</div>
+      <div class="kpi-sub">51% of portfolio</div>
+    </div>
+    <div class="kpi warning">
+      <div class="kpi-label">Legal Status</div>
+      <div class="kpi-value" style="color:#E65100">16</div>
+      <div class="kpi-sub">16% escalated</div>
+    </div>
+    <div class="kpi hardship-kpi">
+      <div class="kpi-label">Hardship Flagged</div>
+      <div class="kpi-value" style="color:#4527A0">30</div>
+      <div class="kpi-sub">Active holds: 13</div>
+    </div>
+    <div class="kpi success">
+      <div class="kpi-label">Current</div>
+      <div class="kpi-value" style="color:#137333">33</div>
+      <div class="kpi-sub">33% in good standing</div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="filter-group search-group">
+      <label>Search</label>
+      <input type="text" placeholder="Name, Customer ID, Account ID…" />
+    </div>
+    <div class="filter-group">
+      <label>Risk Segment</label>
+      <select>
+        <option>All Risk Levels</option>
+        <option>Low (26)</option>
+        <option>Medium (21)</option>
+        <option>High (23)</option>
+        <option>Hardship (30)</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Account Status</label>
+      <select>
+        <option>All Statuses</option>
+        <option>Current (33)</option>
+        <option>Delinquent (51)</option>
+        <option>Legal (16)</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Product Type</label>
+      <select>
+        <option>All Products</option>
+        <option>Personal Loan (17)</option>
+        <option>Credit Card (22)</option>
+        <option>Mortgage (20)</option>
+        <option>Auto Loan (24)</option>
+        <option>Overdraft (17)</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Collection Hold</label>
+      <select>
+        <option>All</option>
+        <option>Hold Active (13)</option>
+        <option>No Hold (87)</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>DPD Range</label>
+      <select>
+        <option>All DPD</option>
+        <option>0 (Current)</option>
+        <option>1 – 30 days</option>
+        <option>31 – 60 days</option>
+        <option>61 – 90 days</option>
+        <option>90+ days</option>
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="btn btn-outline">↺ Reset</button>
+      <button class="btn btn-primary">Apply</button>
+    </div>
+  </div>
+
+  <!-- CUSTOMER TABLE -->
+  <div class="table-card">
+    <div class="table-toolbar">
+      <span class="table-toolbar-title">Customer List</span>
+      <span class="table-count">Showing 10 of 100 customers</span>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px"><input type="checkbox" /></th>
+          <th class="sortable">Customer ↕</th>
+          <th class="sortable">Risk ↕</th>
+          <th class="sortable">Product ↕</th>
+          <th class="sortable">Status ↕</th>
+          <th class="sortable">DPD ↕</th>
+          <th class="sortable">Outstanding ↕</th>
+          <th>Collection Hold</th>
+          <th>Hardship</th>
+          <th style="width:120px">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- CUST-001 James Chen -->
+        <tr onclick="selectRow(this, 'CUST-001','James Chen','ACC-001','Personal Loan','Current','0','$4,500','No Hold','None','low')">
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">James Chen</div>
+            <div class="cust-id">CUST-001 · ACC-001</div>
+          </td>
+          <td><span class="badge risk-low">LOW</span></td>
+          <td><span class="badge product-badge">Personal Loan</span></td>
+          <td><span class="badge status-current">Current</span></td>
+          <td><span class="dpd-0">0</span></td>
+          <td>$4,500</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="event.stopPropagation();triggerAnalysis('CUST-001','ACC-001')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-002 Sarah Jones -->
+        <tr onclick="selectRow(this,'CUST-002','Sarah Jones','ACC-002','Credit Card','Delinquent','45','$2,300','Hold Active','None','medium')">
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">Sarah Jones</div>
+            <div class="cust-id">CUST-002 · ACC-002</div>
+          </td>
+          <td><span class="badge risk-medium">MEDIUM</span></td>
+          <td><span class="badge product-badge">Credit Card</span></td>
+          <td><span class="badge status-delinquent">Delinquent</span></td>
+          <td><span class="dpd-low">45</span></td>
+          <td>$2,300</td>
+          <td><span class="badge hold-badge">🚫 Hold Active</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="event.stopPropagation();triggerAnalysis('CUST-002','ACC-002')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-003 Michael Okonkwo -->
+        <tr onclick="selectRow(this,'CUST-003','Michael Okonkwo','ACC-003','Personal Loan','Delinquent','92','$12,000','No Hold','None','high')">
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">Michael Okonkwo</div>
+            <div class="cust-id">CUST-003 · ACC-003</div>
+          </td>
+          <td><span class="badge risk-high">HIGH</span></td>
+          <td><span class="badge product-badge">Personal Loan</span></td>
+          <td><span class="badge status-delinquent">Delinquent</span></td>
+          <td><span class="dpd-hi">92</span></td>
+          <td>$12,000</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="event.stopPropagation();triggerAnalysis('CUST-003','ACC-003')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-004 Emma Patel (hardship) -->
+        <tr onclick="selectRow(this,'CUST-004','Emma Patel','ACC-004','Overdraft','Delinquent','35','$1,800','No Hold','Unemployment','hardship')">
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">Emma Patel</div>
+            <div class="cust-id">CUST-004 · ACC-004</div>
+            <div class="cust-hardship">⚠ Hardship: Unemployment</div>
+          </td>
+          <td><span class="badge risk-hardship">HARDSHIP</span></td>
+          <td><span class="badge product-badge">Overdraft</span></td>
+          <td><span class="badge status-delinquent">Delinquent</span></td>
+          <td><span class="dpd-low">35</span></td>
+          <td>$1,800</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td><span class="badge risk-hardship">Unemployment</span></td>
+          <td><button class="btn-run" onclick="event.stopPropagation();triggerAnalysis('CUST-004','ACC-004')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-005 William Nguyen -->
+        <tr onclick="selectRow(this,'CUST-005','William Nguyen','ACC-005','Mortgage','Current','0','$185,000','No Hold','None','low')">
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">William Nguyen</div>
+            <div class="cust-id">CUST-005 · ACC-005</div>
+          </td>
+          <td><span class="badge risk-low">LOW</span></td>
+          <td><span class="badge product-badge">Mortgage</span></td>
+          <td><span class="badge status-current">Current</span></td>
+          <td><span class="dpd-0">0</span></td>
+          <td>$185,000</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="event.stopPropagation();triggerAnalysis('CUST-005','ACC-005')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-006 Olivia Smith -->
+        <tr>
+          <td><input type="radio" name="selected_cust" /></td>
+          <td><div class="cust-name">Olivia Smith</div><div class="cust-id">CUST-006 · ACC-006</div></td>
+          <td><span class="badge risk-medium">MEDIUM</span></td>
+          <td><span class="badge product-badge">Auto Loan</span></td>
+          <td><span class="badge status-delinquent">Delinquent</span></td>
+          <td><span class="dpd-low">28</span></td>
+          <td>$8,000</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="triggerAnalysis('CUST-006','ACC-006')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-007 David Brown (2 disputes) -->
+        <tr>
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">David Brown</div>
+            <div class="cust-id">CUST-007 · ACC-007</div>
+          </td>
+          <td><span class="badge risk-high">HIGH</span></td>
+          <td><span class="badge product-badge">Credit Card</span></td>
+          <td><span class="badge status-delinquent">Delinquent</span></td>
+          <td><span class="dpd-mid">60</span></td>
+          <td>$3,500</td>
+          <td><span class="badge hold-badge">🚫 Hold Active</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="triggerAnalysis('CUST-007','ACC-007')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-008 Isabella Garcia (legal) -->
+        <tr>
+          <td><input type="radio" name="selected_cust" /></td>
+          <td>
+            <div class="cust-name">Isabella Garcia</div>
+            <div class="cust-id">CUST-008 · ACC-008</div>
+            <div class="cust-hardship">⚠ Hardship: Medical</div>
+          </td>
+          <td><span class="badge risk-hardship">HARDSHIP</span></td>
+          <td><span class="badge product-badge">Personal Loan</span></td>
+          <td><span class="badge status-legal">Legal</span></td>
+          <td><span class="dpd-hi">120</span></td>
+          <td>$22,000</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td><span class="badge risk-hardship">Medical</span></td>
+          <td><button class="btn-run" onclick="triggerAnalysis('CUST-008','ACC-008')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-009 Ethan Wilson -->
+        <tr>
+          <td><input type="radio" name="selected_cust" /></td>
+          <td><div class="cust-name">Ethan Wilson</div><div class="cust-id">CUST-009 · ACC-009</div></td>
+          <td><span class="badge risk-medium">MEDIUM</span></td>
+          <td><span class="badge product-badge">Credit Card</span></td>
+          <td><span class="badge status-current">Current</span></td>
+          <td><span class="dpd-low">5</span></td>
+          <td>$500</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="triggerAnalysis('CUST-009','ACC-009')">▶ Analyse</button></td>
+        </tr>
+
+        <!-- CUST-010 Sophia Martinez -->
+        <tr>
+          <td><input type="radio" name="selected_cust" /></td>
+          <td><div class="cust-name">Sophia Martinez</div><div class="cust-id">CUST-010 · ACC-010</div></td>
+          <td><span class="badge risk-low">LOW</span></td>
+          <td><span class="badge product-badge">Auto Loan</span></td>
+          <td><span class="badge status-current">Current</span></td>
+          <td><span class="dpd-0">0</span></td>
+          <td>$9,000</td>
+          <td><span class="badge no-hold-badge">No Hold</span></td>
+          <td>—</td>
+          <td><button class="btn-run" onclick="triggerAnalysis('CUST-010','ACC-010')">▶ Analyse</button></td>
+        </tr>
+
+      </tbody>
+    </table>
+
+    <!-- PAGINATION -->
+    <div class="pagination">
+      <span>Showing <b>1–10</b> of <b>100</b> customers</span>
+      <div class="page-btns">
+        <button class="page-btn">‹</button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <span style="padding:4px 6px;color:#aaa">…</span>
+        <button class="page-btn">10</button>
+        <button class="page-btn">›</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECTED CUSTOMER PANEL -->
+  <div class="selected-panel" id="selectedPanel">
+    <div class="selected-panel-header">
+      <div>
+        <div class="selected-panel-title" id="sp-name">Customer Selected</div>
+        <div style="font-size:0.8rem;color:#888;margin-top:2px" id="sp-ids">—</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap">
+        <div>
+          <label style="font-size:0.75rem;color:#888;font-weight:600;display:block;margin-bottom:3px">Trigger Context</label>
+          <select class="trigger-select" id="triggerSelect">
+            <option value="routine_review">Routine Review</option>
+            <option value="missed_payment">Missed Payment</option>
+            <option value="hardship_claim">Hardship Claim</option>
+            <option value="dispute_raised">Dispute Raised</option>
+            <option value="payment_arrangement_review">Payment Arrangement Review</option>
+            <option value="legal_referral_review">Legal Referral Review</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="padding:8px 24px;font-size:0.9rem" id="runBtn" onclick="launchAnalysis()">
+          ▶ Run Analysis
+        </button>
+      </div>
+    </div>
+    <div class="sp-grid">
+      <div class="sp-item"><label>Risk Segment</label><span id="sp-risk">—</span></div>
+      <div class="sp-item"><label>Account Status</label><span id="sp-status">—</span></div>
+      <div class="sp-item"><label>Days Past Due</label><span id="sp-dpd">—</span></div>
+      <div class="sp-item"><label>Outstanding</label><span id="sp-bal">—</span></div>
+      <div class="sp-item"><label>Product</label><span id="sp-product">—</span></div>
+      <div class="sp-item"><label>Collection Hold</label><span id="sp-hold">—</span></div>
+      <div class="sp-item"><label>Hardship</label><span id="sp-hardship">—</span></div>
+      <div class="sp-item"><label>Analysis</label><span id="sp-analysis">Not run yet</span></div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:1.2rem;font-size:0.78rem;color:#888;align-items:center">
+    <span><b>Risk:</b></span>
+    <span class="badge risk-low">LOW</span>
+    <span class="badge risk-medium">MEDIUM</span>
+    <span class="badge risk-high">HIGH</span>
+    <span class="badge risk-hardship">HARDSHIP</span>
+    <span style="margin-left:1rem"><b>Status:</b></span>
+    <span class="badge status-current">Current</span>
+    <span class="badge status-delinquent">Delinquent</span>
+    <span class="badge status-legal">Legal</span>
+    <span style="margin-left:1rem"><b>DPD:</b></span>
+    <span class="dpd-0">0 = current</span>
+    <span class="dpd-low">1–30 = low</span>
+    <span class="dpd-mid">31–90 = medium</span>
+    <span class="dpd-hi">90+ = critical</span>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+var selectedCustId = null, selectedAccId = null;
+
+function selectRow(row, custId, name, accId, product, status, dpd, bal, hold, hardship, risk) {
+  document.querySelectorAll('tr.selected').forEach(r => r.classList.remove('selected'));
+  row.classList.add('selected');
+  row.querySelector('input[type=radio]').checked = true;
+  selectedCustId = custId; selectedAccId = accId;
+
+  document.getElementById('sp-name').textContent = name;
+  document.getElementById('sp-ids').textContent = custId + ' · ' + accId;
+  document.getElementById('sp-risk').textContent = risk.toUpperCase();
+  document.getElementById('sp-status').textContent = status;
+  document.getElementById('sp-dpd').textContent = dpd + ' days';
+  document.getElementById('sp-bal').textContent = bal;
+  document.getElementById('sp-product').textContent = product;
+  document.getElementById('sp-hold').textContent = hold;
+  document.getElementById('sp-hardship').textContent = hardship === 'None' ? '—' : hardship;
+  document.getElementById('sp-analysis').textContent = 'Ready to run';
+  document.getElementById('selectedPanel').classList.add('visible');
+}
+
+function triggerAnalysis(custId, accId) {
+  alert('Opening analysis for ' + custId + ' / ' + accId + '\n\nIn the live app this navigates to:\nPOST /collections/recommend then streams results to the dashboard.');
+}
+
+function showRunPanel() {
+  if (!selectedCustId) { alert('Please select a customer row first.'); return; }
+  launchAnalysis();
+}
+
+function launchAnalysis() {
+  var trigger = document.getElementById('triggerSelect').value;
+  document.getElementById('sp-analysis').textContent = 'Running…';
+  document.getElementById('runBtn').textContent = '⟳ Running…';
+  document.getElementById('runBtn').style.opacity = '0.7';
+  setTimeout(function() {
+    document.getElementById('sp-analysis').textContent = 'Complete — see results';
+    document.getElementById('runBtn').textContent = '▶ Run Analysis';
+    document.getElementById('runBtn').style.opacity = '1';
+    alert('Analysis complete for ' + selectedCustId + '\n\nIn live app: navigate to results dashboard with\n' +
+          'customer=' + selectedCustId + ', account=' + selectedAccId + ', trigger=' + trigger);
+  }, 1500);
+}
+</script>
+</body>
+</html>
