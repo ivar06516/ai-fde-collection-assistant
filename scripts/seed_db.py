@@ -175,6 +175,20 @@ def seed(session: Session) -> None:
             make_dispute(session, aid, cid, hold)
         make_interactions(session, cid, aid, random.randint(2, 8))
 
+    # AC-005-03: CUST-007 David Brown needs 2 active disputes (seeded with 1 above)
+    from datetime import date as _date, timedelta as _td
+    disp_num = session.query(Dispute).count() + 1
+    session.add(Dispute(
+        dispute_id=f"DISP-{disp_num:03d}",
+        account_id="ACC-007", customer_id="CUST-007",
+        dispute_type="billing_error",
+        status="open",
+        opened_date=_date.today() - _td(days=12),
+        description="Incorrect charge appeared on my statement that I did not authorise",
+        collection_hold=1,
+    ))
+    session.flush()
+
     # Seed 90 additional random customers
     for i in range(11, 101):
         cid = f"CUST-{i:03d}"

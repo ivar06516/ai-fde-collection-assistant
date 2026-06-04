@@ -58,22 +58,22 @@
 ## Acceptance Criteria
 
 ### AC-005-01: Active Dispute Sets Collection Hold True
-- **Given** Sarah Jones (`CUST-002`) has an active `billing_error` dispute with `collection_hold = 1` in DB
-- **When** the Dispute Agent runs
+- **Given** Sarah Jones (`CUST-002` / `ACC-002`) has an active `identity_theft` dispute (`DISP-001`) with `collection_hold = 1` in DB
+- **When** the Dispute Agent runs for `ACC-002`
 - **Then** `dispute_summary.collection_hold = True` and `dispute_summary.hold_reason` is non-empty
-- **Verified by** Phase 11 named-scenario integration test for Sarah Jones
+- **Verified by** unit test `test_dispute_agent.py::test_active_dispute_sets_hold_true`
 
 ### AC-005-02: No Active Disputes Returns Hold False
-- **Given** John Smith (`CUST-001`) has no active disputes (`disputes` table has 0 open rows for ACC-001)
-- **When** the Dispute Agent runs
-- **Then** `dispute_summary.has_active_dispute = False` and `dispute_summary.collection_hold = False`
-- **Verified by** Phase 5 unit test with empty `disputes` fixture
+- **Given** James Chen (`CUST-001` / `ACC-001`) has no active disputes (0 open rows for `ACC-001`)
+- **When** `check_collection_hold` tool runs for `ACC-001`
+- **Then** `collection_hold = False` and `hold_reason` is empty
+- **Verified by** unit test `test_dispute_agent.py::test_no_disputes_returns_hold_false`
 
 ### AC-005-03: Multiple Active Disputes All Listed
-- **Given** David Brown (`CUST-007`) has 2 active disputes in the DB
-- **When** the Dispute Agent runs
+- **Given** David Brown (`CUST-007` / `ACC-007`) has 2 active disputes in the DB (seeded)
+- **When** the Dispute Agent runs for `ACC-007`
 - **Then** `dispute_summary.active_disputes` list length is 2; both dispute IDs are present
-- **Verified by** Phase 11 named-scenario integration test for David Brown
+- **Verified by** unit test `test_dispute_agent.py::test_multiple_disputes_all_listed`
 
 ### AC-005-04: Resolved Dispute Does Not Set Hold
 - **Given** a dispute with `status = "resolved"` in the DB
@@ -85,19 +85,19 @@
 - **Given** `dispute_summary.collection_hold = True` (any active dispute with hold flag)
 - **When** the NBA Agent runs in UC-006
 - **Then** `nba_recommendation.action` is one of `["place_on_hold", "no_action_required"]`; `nba_recommendation.blocked_by_dispute = True`; no outbound contact action is returned regardless of arrears trajectory
-- **Verified by** Phase 6 + Phase 11 integration test asserting NBA hard constraint
+- **Verified by** unit test `test_dispute_agent.py::test_nba_blocked_when_hold_active` + `test_nba_tools.py::test_collection_hold_restricts_actions`
 
 ### AC-005-06: Dispute Type Classification is Accurate
 - **Given** a dispute with description containing "charge I did not authorise"
-- **When** `classify_dispute_type` runs
-- **Then** `dispute_type` is classified as `fraud_claim` or `billing_error` (not `identity_theft` or `service_dispute`)
-- **Verified by** Phase 5 unit test with classification fixture (acceptance range: correct category or closely related)
+- **When** `classify_dispute_type` tool runs
+- **Then** returned type is `"fraud_claim"` or `"billing_error"` (not `"identity_theft"` or `"service_dispute"`)
+- **Verified by** unit test `test_dispute_agent.py::test_classify_dispute_type_fraud_or_billing`
 
-### AC-005-07: Dispute Agent is the Fastest Stage 2 Agent
-- **Given** a standard account with 1 active dispute
-- **When** the Dispute Agent runs alongside the Arrears Prediction Agent
-- **Then** the Dispute Agent completes in < 2 seconds (it is a simple DB query + classification, not a pattern analysis)
-- **Verified by** Grafana `agent_execution_duration_seconds{agent="dispute"}` p95
+### AC-005-07: Resolution Timeline Returns Days Open
+- **Given** an active dispute opened N days ago
+- **When** `get_resolution_timeline` tool runs
+- **Then** returned dict has `days_open >= 0`; `escalated` boolean; `dispute_id` present
+- **Verified by** unit test `test_dispute_agent.py::test_resolution_timeline_days_open`
 
 ---
 

@@ -28,4 +28,5 @@ class NBARecommendation(BaseModel):
     urgency: str   # low | medium | high | critical
     alternative_actions: list[AlternativeAction] = []
     policy_constraints_applied: list[str] = []
+    blocked_by_dispute: bool = False  # True when collection_hold forced the action
     summary: str

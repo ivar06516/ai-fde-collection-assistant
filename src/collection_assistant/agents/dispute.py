@@ -10,8 +10,10 @@ from collection_assistant import event_bus
 from collection_assistant.llm.client_factory import get_llm
 from collection_assistant.tools.dispute_tools import (
     check_collection_hold,
+    classify_dispute_type,
     get_active_disputes_data,
     get_dispute_history,
+    get_resolution_timeline,
 )
 
 SYSTEM_PROMPT = """You are the Dispute Agent for an AI-powered debt collection assistant.
@@ -34,8 +36,10 @@ Produce a JSON response with these exact fields:
   "summary": "One paragraph summary of the dispute situation and its impact on collection"
 }
 
-CRITICAL: If collection_hold is true, explicitly state this in the summary and note that
-outbound collection contact is not permitted.
+CRITICAL rules (never violate):
+- Copy collection_hold EXACTLY from the pre-calculated value provided
+- If collection_hold = true, the summary must state outbound collection contact is NOT permitted
+- dispute_type must be one of: billing_error | fraud_claim | identity_theft | service_dispute | payment_dispute
 
 Respond with valid JSON only."""
 
@@ -55,14 +59,27 @@ def run_dispute_agent(state: CollectionWorkflowState) -> CollectionWorkflowState
         active = get_active_disputes_data(account_id)
         history = get_dispute_history(account_id)
         hold_data = check_collection_hold(account_id)
+        timeline = get_resolution_timeline(account_id)
 
         resolved = [d for d in history if d.get("status") == "resolved"]
 
+        # Enrich active disputes with classification and timeline
+        for d in active:
+            if not d.get("dispute_type") or d.get("dispute_type") == "billing_error":
+                desc = d.get("description") or ""
+                d["dispute_type"] = classify_dispute_type(desc)
+            tl = next((t for t in timeline if t["dispute_id"] == d["dispute_id"]), {})
+            d["days_open"] = tl.get("days_open", 0)
+            d["escalated"] = tl.get("escalated", False)
+
         data_prompt = f"""Dispute data for account {account_id}:
 
-ACTIVE DISPUTES: {json.dumps(active, indent=2)}
+ACTIVE DISPUTES (with classification + timeline): {json.dumps(active, indent=2)}
 RESOLVED DISPUTES: {json.dumps(resolved, indent=2)}
-COLLECTION HOLD STATUS: {json.dumps(hold_data, indent=2)}"""
+PRE-CALCULATED VALUES (copy these exactly into your JSON output):
+  collection_hold = {str(hold_data['collection_hold']).lower()}
+  hold_reason = {json.dumps(hold_data['hold_reason']) if hold_data['hold_reason'] else 'null'}
+  total_open_disputes = {len(active)}"""
 
         settings = get_settings()
         llm = get_llm("dispute", settings)
