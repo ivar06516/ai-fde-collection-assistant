@@ -1,0 +1,666 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDE Collection Assistant — Analysis Flow Preview</title>
+<style>
+:root {
+  --accent: #A100FF;
+  --accent-light: #F3E5F5;
+  --nav-bg: #1A1A1A;
+  --success: #137333;
+  --warning: #E65100;
+  --danger: #C62828;
+  --hardship: #4527A0;
+  --muted: #666;
+  --border: #E8E8E8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       background: #F5F5F5; color: #1A1A1A; }
+
+/* NAV */
+.nav { background: var(--nav-bg); padding: 0 1.5rem; height: 52px;
+       display: flex; align-items: center; gap: 1rem; }
+.nav-logo { color: var(--accent); font-size: 1.2rem; font-weight: 800; }
+.nav-sep  { color: #555; }
+.nav-title { color: #ccc; font-size: 0.9rem; }
+.nav-right { margin-left: auto; display: flex; gap: 0.6rem; align-items: center; }
+
+/* CUSTOMER BANNER */
+.customer-banner {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 0.8rem 1.5rem;
+  display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+}
+.cb-name { font-size: 1.1rem; font-weight: 700; }
+.cb-id   { font-size: 0.78rem; color: var(--muted); font-family: monospace; margin-top: 1px; }
+.cb-badge { padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; }
+.cb-divider { color: #DDD; font-size: 1.2rem; }
+.cb-field { font-size: 0.82rem; color: var(--muted); }
+.cb-field b { color: #1A1A1A; }
+
+/* PROGRESS BAR */
+.progress-bar-wrap {
+  background: #fff; border-bottom: 1px solid var(--border);
+  padding: 0.6rem 1.5rem;
+  display: flex; align-items: center; gap: 1rem;
+}
+.pb-label { font-size: 0.78rem; color: var(--muted); font-weight: 600; min-width: 120px; }
+.pb-track { flex: 1; height: 6px; background: #EEE; border-radius: 3px; overflow: hidden; }
+.pb-fill  { height: 100%; border-radius: 3px; background: var(--accent);
+            transition: width 0.4s ease; }
+.pb-pct   { font-size: 0.78rem; font-weight: 700; color: var(--accent); min-width: 35px; text-align: right; }
+.pb-status { font-size: 0.8rem; color: var(--muted); }
+
+/* LAYOUT */
+.layout { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 150px); }
+
+/* ── PIPELINE PANEL (LEFT) ── */
+.pipeline-panel {
+  background: #fff; border-right: 1px solid var(--border);
+  padding: 1.2rem; position: sticky; top: 0; height: calc(100vh - 150px); overflow-y: auto;
+}
+.pp-title { font-size: 0.78rem; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+
+/* Stage group */
+.stage-group { margin-bottom: 0.5rem; }
+.stage-label {
+  font-size: 0.7rem; font-weight: 700; color: var(--accent);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  background: var(--accent-light); padding: 2px 8px;
+  border-radius: 4px; display: inline-block; margin-bottom: 0.5rem;
+}
+
+/* Agent node */
+.agent-node {
+  display: flex; align-items: flex-start; gap: 0.7rem;
+  padding: 0.7rem 0.8rem; border-radius: 8px;
+  border: 1.5px solid var(--border);
+  margin-bottom: 0.4rem; cursor: pointer;
+  transition: all 0.2s; position: relative; overflow: hidden;
+}
+.agent-node::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: transparent; border-radius: 3px 0 0 3px;
+}
+.agent-node.waiting  { background: #FAFAFA; }
+.agent-node.running  { background: #FFF8E1; border-color: #E65100; }
+.agent-node.running::before { background: #E65100; }
+.agent-node.completed{ background: #F1F8F1; border-color: #2E7D32; }
+.agent-node.completed::before { background: #2E7D32; }
+.agent-node.error    { background: #FFF5F5; border-color: #C62828; }
+.agent-node.error::before { background: #C62828; }
+.agent-node:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); transform: translateX(2px); }
+.agent-node.active-detail { box-shadow: 0 0 0 2px var(--accent); }
+
+.agent-icon { font-size: 1.2rem; min-width: 24px; text-align: center; margin-top: 1px; }
+.agent-info { flex: 1; }
+.agent-name { font-size: 0.85rem; font-weight: 600; }
+.agent-stage-tag { font-size: 0.68rem; color: var(--muted); }
+.agent-time { font-size: 0.72rem; color: var(--success); font-weight: 600; margin-top: 2px; }
+.agent-error-msg { font-size: 0.72rem; color: var(--danger); margin-top: 2px; }
+
+/* Spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 16px; height: 16px; border: 2px solid #E65100;
+           border-top-color: transparent; border-radius: 50%;
+           animation: spin 0.8s linear infinite; margin-top: 3px; }
+
+/* Stage connector arrow */
+.stage-connector { text-align: center; color: #CCC; font-size: 1.2rem;
+                   margin: 0.3rem 0; line-height: 1; }
+
+/* ELAPSED TIMELINE */
+.timeline { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.tl-title { font-size: 0.7rem; color: var(--muted); font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+.tl-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; }
+.tl-label { font-size: 0.7rem; color: var(--muted); min-width: 90px; }
+.tl-bar-wrap { flex: 1; height: 8px; background: #EEE; border-radius: 4px; overflow: hidden; }
+.tl-bar { height: 100%; border-radius: 4px; background: var(--accent);
+          transition: width 0.5s ease; }
+.tl-ms { font-size: 0.68rem; color: var(--muted); min-width: 42px; text-align: right; }
+
+/* ── RESULTS PANEL (RIGHT) ── */
+.results-panel { padding: 1.2rem; }
+
+/* Waiting state */
+.waiting-state { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+.waiting-state .big-icon { font-size: 3rem; margin-bottom: 1rem;
+                            animation: pulse 1.5s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Result card */
+@keyframes slideIn { from { opacity:0; transform: translateY(20px); }
+                     to   { opacity:1; transform: translateY(0); } }
+.result-card {
+  background: #fff; border: 1px solid var(--border); border-radius: 10px;
+  padding: 1rem 1.2rem; margin-bottom: 1rem;
+  animation: slideIn 0.4s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+.rc-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.8rem; }
+.rc-title { font-size: 0.9rem; font-weight: 700; }
+.rc-elapsed { margin-left: auto; font-size: 0.72rem; color: var(--success);
+              background: #F1F8F1; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+.rc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.rc-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+.rc-item label { font-size: 0.68rem; color: var(--muted); font-weight: 600;
+                 text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 2px; }
+.rc-item span  { font-size: 0.88rem; font-weight: 600; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 8px;
+         font-size: 0.72rem; font-weight: 700; }
+.badge-low      { background:#E8F5E9;color:#2E7D32; }
+.badge-medium   { background:#FFF8E1;color:#E65100; }
+.badge-high     { background:#FFEBEE;color:#C62828; }
+.badge-hardship { background:#EDE7F6;color:#4527A0; }
+.badge-current  { background:#E8F5E9;color:#2E7D32; }
+.badge-delinquent{background:#FFF3E0;color:#E65100; }
+.badge-legal    { background:#FFEBEE;color:#C62828; }
+.badge-stable   { background:#FFF8E1;color:#E65100; }
+.badge-critical { background:#EDE7F6;color:#7B00CC; }
+.badge-hold     { background:#FFEBEE;color:#C62828; }
+.badge-nohold   { background:#E8F5E9;color:#2E7D32; }
+
+/* Stage 1 cards side by side */
+.stage-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.stage-cards.single { grid-template-columns: 1fr 1fr; }
+
+/* NBA Card — special */
+@keyframes nbaReveal {
+  0%   { opacity:0; transform: scale(0.9); }
+  60%  { transform: scale(1.02); }
+  100% { opacity:1; transform: scale(1); }
+}
+.nba-card {
+  background: linear-gradient(135deg, #A100FF0D 0%, #fff 100%);
+  border: 2px solid var(--accent); border-radius: 12px;
+  padding: 1.2rem 1.5rem; margin-bottom: 1rem;
+  animation: nbaReveal 0.6s ease;
+  box-shadow: 0 4px 16px rgba(161,0,255,0.12);
+}
+.nba-label { font-size: 0.72rem; color: #888; font-weight: 700;
+             text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+.nba-action { font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 0.8rem; }
+.nba-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.nba-meta-item label { font-size: 0.7rem; color: #888; display: block; margin-bottom: 2px; }
+.nba-meta-item span  { font-weight: 700; font-size: 0.9rem; }
+.nba-rationale {
+  background: #FAFAFA; border-left: 3px solid var(--accent);
+  padding: 0.6rem 0.8rem; border-radius: 0 6px 6px 0;
+  font-size: 0.82rem; color: #444; line-height: 1.6;
+}
+.conf-bar-wrap { background:#EEE; border-radius: 4px; height: 6px; margin-top: 4px; overflow: hidden; }
+.conf-bar { height: 100%; border-radius: 4px; background: var(--accent);
+            transition: width 0.8s ease; }
+.alt-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.alt-pill { background: var(--accent-light); color: var(--accent);
+            padding: 3px 10px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+
+/* Arrears mini charts */
+.gauge-mini { text-align: center; }
+.gauge-number { font-size: 2rem; font-weight: 800; }
+.dpd-forecast { display: flex; align-items: flex-end; gap: 4px; height: 50px; margin-top: 0.4rem; }
+.dpd-bar { background: var(--accent); border-radius: 3px 3px 0 0; min-width: 24px;
+           opacity: 0.8; transition: height 0.5s ease; position: relative; }
+.dpd-bar span { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+                font-size: 0.62rem; color: var(--muted); white-space: nowrap; }
+.dpd-bar-label { font-size: 0.65rem; font-weight: 700; color: #fff;
+                 position: absolute; top: 2px; left: 50%; transform: translateX(-50%); }
+
+/* COMPLETE STATE */
+.complete-banner {
+  background: linear-gradient(135deg, #137333, #1B5E20);
+  color: white; border-radius: 10px; padding: 0.8rem 1.2rem;
+  display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+  animation: slideIn 0.4s ease;
+}
+.cb-text { font-size: 0.9rem; }
+.cb-time { margin-left: auto; background: rgba(255,255,255,0.2);
+           padding: 3px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; }
+.btn { padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer;
+       font-size: 0.84rem; font-weight: 600; transition: all 0.15s; }
+.btn-outline-white { background: rgba(255,255,255,0.15); color: white;
+                     border: 1px solid rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <span class="nav-logo">Accenture</span>
+  <span class="nav-sep">|</span>
+  <span class="nav-title">AI FDE Collection Assistant</span>
+  <div class="nav-right">
+    <span style="color:#888;font-size:0.8rem">← Back to Dashboard</span>
+    <span style="background:rgba(161,0,255,0.2);color:#A100FF;padding:3px 10px;border-radius:10px;font-size:0.75rem;font-weight:700">🟢 Groq (Free)</span>
+  </div>
+</nav>
+
+<!-- CUSTOMER BANNER -->
+<div class="customer-banner">
+  <div>
+    <div class="cb-name">Michael Okonkwo</div>
+    <div class="cb-id">CUST-003 · ACC-003</div>
+  </div>
+  <span class="cb-divider">|</span>
+  <span class="cb-badge" style="background:#FFEBEE;color:#C62828">HIGH RISK</span>
+  <span class="cb-divider">|</span>
+  <span class="cb-field"><b>Personal Loan</b></span>
+  <span class="cb-divider">|</span>
+  <span class="cb-field">DPD: <b style="color:#C62828">92</b></span>
+  <span class="cb-divider">|</span>
+  <span class="cb-field">Balance: <b>$12,000</b></span>
+  <span class="cb-divider">|</span>
+  <span class="cb-field">Trigger: <b>Routine Review</b></span>
+  <span style="margin-left:auto;background:#FFF8E1;color:#E65100;padding:3px 10px;border-radius:8px;font-size:0.75rem;font-weight:700" id="wf-id">wf-43ae23ed7246</span>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress-bar-wrap">
+  <span class="pb-label">Analysis Progress</span>
+  <div class="pb-track">
+    <div class="pb-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <span class="pb-pct" id="progressPct">0%</span>
+  <span class="pb-status" id="progressStatus">Starting pipeline…</span>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- PIPELINE PANEL -->
+  <div class="pipeline-panel">
+    <div class="pp-title">Agent Execution Pipeline</div>
+
+    <!-- Stage 1 -->
+    <div class="stage-group">
+      <div class="stage-label">Stage 1 — Parallel</div>
+      <div class="agent-node waiting" id="node-cp" onclick="toggleDetail('cp')">
+        <div class="agent-icon">👤</div>
+        <div class="agent-info">
+          <div class="agent-name">Customer Profile</div>
+          <div class="agent-stage-tag">Stage 1 · Groq 70B</div>
+          <div class="agent-time" id="time-cp"></div>
+        </div>
+        <div id="status-cp">⏳</div>
+      </div>
+      <div class="agent-node waiting" id="node-ap" onclick="toggleDetail('ap')">
+        <div class="agent-icon">🏦</div>
+        <div class="agent-info">
+          <div class="agent-name">Account Profile</div>
+          <div class="agent-stage-tag">Stage 1 · Groq 70B</div>
+          <div class="agent-time" id="time-ap"></div>
+        </div>
+        <div id="status-ap">⏳</div>
+      </div>
+    </div>
+
+    <div class="stage-connector">↓</div>
+
+    <!-- Stage 2 -->
+    <div class="stage-group">
+      <div class="stage-label">Stage 2 — Parallel</div>
+      <div class="agent-node waiting" id="node-arr" onclick="toggleDetail('arr')">
+        <div class="agent-icon">📊</div>
+        <div class="agent-info">
+          <div class="agent-name">Arrears Prediction</div>
+          <div class="agent-stage-tag">Stage 2 · Groq 70B</div>
+          <div class="agent-time" id="time-arr"></div>
+        </div>
+        <div id="status-arr">⏳</div>
+      </div>
+      <div class="agent-node waiting" id="node-dis" onclick="toggleDetail('dis')">
+        <div class="agent-icon">⚖</div>
+        <div class="agent-info">
+          <div class="agent-name">Dispute Detection</div>
+          <div class="agent-stage-tag">Stage 2 · Groq 70B</div>
+          <div class="agent-time" id="time-dis"></div>
+        </div>
+        <div id="status-dis">⏳</div>
+      </div>
+    </div>
+
+    <div class="stage-connector">↓</div>
+
+    <!-- Stage 3 -->
+    <div class="stage-group">
+      <div class="stage-label">Stage 3 — Sequential</div>
+      <div class="agent-node waiting" id="node-nba" onclick="toggleDetail('nba')">
+        <div class="agent-icon">⭐</div>
+        <div class="agent-info">
+          <div class="agent-name">Next Best Action</div>
+          <div class="agent-stage-tag">Stage 3 · Groq 70B</div>
+          <div class="agent-time" id="time-nba"></div>
+        </div>
+        <div id="status-nba">⏳</div>
+      </div>
+      <div class="agent-node waiting" id="node-aud" onclick="toggleDetail('aud')">
+        <div class="agent-icon">📋</div>
+        <div class="agent-info">
+          <div class="agent-name">Audit Trail</div>
+          <div class="agent-stage-tag">Stage 3 · Groq 8B</div>
+          <div class="agent-time" id="time-aud"></div>
+        </div>
+        <div id="status-aud">⏳</div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline" id="timeline" style="display:none">
+      <div class="tl-title">Elapsed Time</div>
+      <div class="tl-row">
+        <span class="tl-label">Customer Profile</span>
+        <div class="tl-bar-wrap"><div class="tl-bar" id="tl-cp" style="width:0%"></div></div>
+        <span class="tl-ms" id="tlms-cp">—</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-label">Account Profile</span>
+        <div class="tl-bar-wrap"><div class="tl-bar" id="tl-ap" style="width:0%"></div></div>
+        <span class="tl-ms" id="tlms-ap">—</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-label">Arrears</span>
+        <div class="tl-bar-wrap"><div class="tl-bar" id="tl-arr" style="width:0%"></div></div>
+        <span class="tl-ms" id="tlms-arr">—</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-label">Dispute</span>
+        <div class="tl-bar-wrap"><div class="tl-bar" id="tl-dis" style="width:0%"></div></div>
+        <span class="tl-ms" id="tlms-dis">—</span>
+      </div>
+      <div class="tl-row">
+        <span class="tl-label">NBA</span>
+        <div class="tl-bar-wrap"><div class="tl-bar" id="tl-nba" style="width:0%"></div></div>
+        <span class="tl-ms" id="tlms-nba">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS PANEL -->
+  <div class="results-panel" id="resultsPanel">
+    <div class="waiting-state" id="waitingMsg">
+      <div class="big-icon">⚙</div>
+      <div style="font-size:1rem;font-weight:600;margin-bottom:0.4rem">Initialising Pipeline</div>
+      <div style="font-size:0.85rem">Agents will populate below as they complete</div>
+    </div>
+    <div id="cards"></div>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+var startTime = Date.now();
+var maxMs = 23000;
+
+// ── Simulation schedule (ms from start) ──────────────────────────────────────
+var events = [
+  { t: 400,  type:'run',   id:'cp',  label:'Customer Profile' },
+  { t: 400,  type:'run',   id:'ap',  label:'Account Profile' },
+  { t: 4100, type:'done',  id:'cp',  ms:3800 },
+  { t: 5200, type:'done',  id:'ap',  ms:4900 },
+  { t: 5300, type:'run',   id:'arr', label:'Arrears Prediction' },
+  { t: 5300, type:'run',   id:'dis', label:'Dispute Detection' },
+  { t: 9700, type:'done',  id:'dis', ms:4400 },
+  { t:10200, type:'done',  id:'arr', ms:4900 },
+  { t:10300, type:'run',   id:'nba', label:'Next Best Action' },
+  { t:16500, type:'done',  id:'nba', ms:6300 },
+  { t:16600, type:'run',   id:'aud', label:'Audit' },
+  { t:16650, type:'done',  id:'aud', ms:50 },
+  { t:16700, type:'complete' },
+];
+
+var completedAgents = 0;
+var totalAgents = 6;
+var cardIds = {};
+
+function updateProgress(pct, label) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressStatus').textContent = label;
+}
+
+function setRunning(id) {
+  var node = document.getElementById('node-' + id);
+  node.className = 'agent-node running';
+  var s = document.getElementById('status-' + id);
+  s.innerHTML = '<div class="spinner"></div>';
+}
+
+function setDone(id, ms) {
+  completedAgents++;
+  var node = document.getElementById('node-' + id);
+  node.className = 'agent-node completed';
+  document.getElementById('status-' + id).textContent = '✅';
+  document.getElementById('time-' + id).textContent = (ms/1000).toFixed(1) + 's';
+  document.getElementById('timeline').style.display = 'block';
+  updateTimeline(id, ms);
+  var pct = Math.round(completedAgents / totalAgents * 85);
+  updateProgress(pct, 'Running pipeline…');
+}
+
+function updateTimeline(id, ms) {
+  var bar = document.getElementById('tl-' + id);
+  var lbl = document.getElementById('tlms-' + id);
+  if (!bar) return;
+  var pct = Math.min(100, ms / 8000 * 100);
+  bar.style.width = pct + '%';
+  lbl.textContent = ms + 'ms';
+}
+
+function addCard(html) {
+  var cards = document.getElementById('cards');
+  var waiting = document.getElementById('waitingMsg');
+  if (waiting) waiting.style.display = 'none';
+  cards.insertAdjacentHTML('beforeend', html);
+}
+
+function toggleDetail(id) {
+  var nodes = document.querySelectorAll('.agent-node');
+  nodes.forEach(function(n) { n.classList.remove('active-detail'); });
+  document.getElementById('node-' + id).classList.add('active-detail');
+}
+
+// ── Card templates ────────────────────────────────────────────────────────────
+
+function customerCard() {
+  return `<div class="stage-cards">
+  <div class="result-card">
+    <div class="rc-header">
+      <span>👤</span><span class="rc-title">Customer Profile</span>
+      <span class="rc-elapsed">3.8s</span>
+    </div>
+    <div class="rc-grid">
+      <div class="rc-item"><label>Name</label><span>Michael Okonkwo</span></div>
+      <div class="rc-item"><label>Age</label><span>41</span></div>
+      <div class="rc-item"><label>Employment</label><span>Employed</span></div>
+      <div class="rc-item"><label>Annual Income</label><span>$34,200</span></div>
+      <div class="rc-item"><label>Tenure</label><span>3.2 years</span></div>
+      <div class="rc-item"><label>Risk Segment</label>
+        <span class="badge badge-high">HIGH</span></div>
+      <div class="rc-item"><label>Preferred Channel</label><span>📧 Email</span></div>
+      <div class="rc-item"><label>Interactions</label><span>6 prior</span></div>
+      <div class="rc-item"><label>Last Outcome</label><span>No Answer</span></div>
+    </div>
+  </div>
+  <div id="card-ap-placeholder" style="border:2px dashed #E8E8E8;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:0.85rem;padding:1.5rem">
+    <div style="text-align:center"><div class="big-icon" style="font-size:2rem">🏦</div><div style="margin-top:0.4rem">Account Profile<br>Loading…</div></div>
+  </div></div>`;
+}
+
+function accountCard() {
+  document.getElementById('card-ap-placeholder').outerHTML = `
+  <div class="result-card" style="animation:slideIn 0.4s ease">
+    <div class="rc-header"><span>🏦</span><span class="rc-title">Account Profile</span><span class="rc-elapsed">4.9s</span></div>
+    <div class="rc-grid">
+      <div class="rc-item"><label>Product</label><span>Personal Loan</span></div>
+      <div class="rc-item"><label>Status</label><span class="badge badge-delinquent">Delinquent</span></div>
+      <div class="rc-item"><label>DPD</label><span style="font-size:1.1rem;font-weight:800;color:#C62828">92</span></div>
+      <div class="rc-item"><label>Outstanding</label><span>$12,000</span></div>
+      <div class="rc-item"><label>Original</label><span>$20,000</span></div>
+      <div class="rc-item"><label>On-Time Rate</label><span style="color:#C62828;font-weight:700">42%</span></div>
+      <div class="rc-item"><label>Missed (6m)</label><span>4</span></div>
+      <div class="rc-item"><label>Last Payment</label><span>$400</span></div>
+      <div class="rc-item"><label>Next Due</label><span>$500</span></div>
+    </div>
+  </div>`;
+}
+
+function arrearsCard() {
+  return `<div class="stage-cards">
+  <div class="result-card">
+    <div class="rc-header"><span>📊</span><span class="rc-title">Arrears Prediction</span>
+      <span class="rc-elapsed">4.9s</span></div>
+    <div class="rc-grid-2">
+      <div class="rc-item"><label>Trajectory</label>
+        <span class="badge badge-critical">CRITICAL</span></div>
+      <div class="rc-item">
+        <label>Default Probability</label>
+        <span style="font-size:1.4rem;font-weight:800;color:#7B00CC">98.0%</span>
+        <div class="conf-bar-wrap"><div class="conf-bar" style="width:98%;background:#7B00CC"></div></div>
+      </div>
+      <div class="rc-item"><label>DPD +30d</label><span style="color:#C62828;font-weight:700">127</span></div>
+      <div class="rc-item"><label>DPD +90d</label><span style="color:#7B00CC;font-weight:700">197</span></div>
+      <div class="rc-item"><label>Pred. Arrears</label><span>$13,680</span></div>
+      <div class="rc-item"><label>Confidence</label><span>85%</span></div>
+    </div>
+    <div style="margin-top:0.8rem">
+      <div style="font-size:0.7rem;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:0.4rem">DPD Forecast</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:60px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <div style="background:#C62828;border-radius:3px 3px 0 0;width:100%;height:40px;display:flex;align-items:flex-start;justify-content:center;padding-top:3px">
+            <span style="color:white;font-size:0.65rem;font-weight:700">92</span></div>
+          <span style="font-size:0.62rem;color:#888">Now</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <div style="background:#C62828;border-radius:3px 3px 0 0;width:100%;height:50px;display:flex;align-items:flex-start;justify-content:center;padding-top:3px">
+            <span style="color:white;font-size:0.65rem;font-weight:700">127</span></div>
+          <span style="font-size:0.62rem;color:#888">+30d</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <div style="background:#7B00CC;border-radius:3px 3px 0 0;width:100%;height:56px;display:flex;align-items:flex-start;justify-content:center;padding-top:3px">
+            <span style="color:white;font-size:0.65rem;font-weight:700">162</span></div>
+          <span style="font-size:0.62rem;color:#888">+60d</span>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <div style="background:#4A148C;border-radius:3px 3px 0 0;width:100%;height:60px;display:flex;align-items:flex-start;justify-content:center;padding-top:3px">
+            <span style="color:white;font-size:0.65rem;font-weight:700">197</span></div>
+          <span style="font-size:0.62rem;color:#888">+90d</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:0.6rem;font-size:0.75rem;color:#888">Risk Factors: High DPD (0.90) · Critical trajectory (0.85) · Low on-time rate (0.75)</div>
+  </div>
+  <div id="card-dis-placeholder" style="border:2px dashed #E8E8E8;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:0.85rem;padding:1.5rem">
+    <div style="text-align:center"><div style="font-size:2rem">⚖</div><div style="margin-top:0.4rem">Dispute Detection<br>Loading…</div></div>
+  </div></div>`;
+}
+
+function disputeCard() {
+  document.getElementById('card-dis-placeholder').outerHTML = `
+  <div class="result-card" style="animation:slideIn 0.4s ease">
+    <div class="rc-header"><span>⚖</span><span class="rc-title">Dispute Summary</span><span class="rc-elapsed">4.4s</span></div>
+    <div style="background:#E8F5E9;border-left:3px solid #2E7D32;padding:0.5rem 0.8rem;border-radius:0 6px 6px 0;margin-bottom:0.8rem;font-size:0.85rem;font-weight:700;color:#2E7D32">
+      No Collection Hold</div>
+    <div class="rc-grid-2">
+      <div class="rc-item"><label>Open Disputes</label><span>0</span></div>
+      <div class="rc-item"><label>Collection Hold</label><span class="badge badge-nohold">No Hold</span></div>
+      <div class="rc-item"><label>Resolved</label><span>1 resolved</span></div>
+      <div class="rc-item"><label>NBA Impact</label><span>Full action catalogue available</span></div>
+    </div>
+  </div>`;
+}
+
+function nbaCard() {
+  return `<div class="nba-card">
+    <div class="nba-label">⭐ NBA Agent — Next Best Action</div>
+    <div class="nba-action">Offer Settlement</div>
+    <div class="nba-meta">
+      <div class="nba-meta-item">
+        <label>Channel</label>
+        <span>📧 Email</span>
+      </div>
+      <div class="nba-meta-item">
+        <label>Confidence</label>
+        <span style="color:#A100FF">87%</span>
+        <div class="conf-bar-wrap" style="width:100px">
+          <div class="conf-bar" style="width:87%"></div>
+        </div>
+      </div>
+      <div class="nba-meta-item">
+        <label>Urgency</label>
+        <span class="badge badge-critical">CRITICAL</span>
+      </div>
+      <div class="nba-meta-item">
+        <label>Dispute Hold</label>
+        <span class="badge badge-nohold">Not Blocked</span>
+      </div>
+    </div>
+    <div class="nba-rationale">
+      The customer's arrears trajectory is critical with a 98% default probability and DPD of 92 days.
+      Given the high outstanding balance of $12,000 and deteriorating payment pattern (42% on-time rate),
+      offering a settlement at a reduced amount is the most pragmatic action to recover a portion of the
+      debt before the account reaches write-off threshold. Direct email contact is preferred per customer
+      channel preference.
+    </div>
+    <div class="alt-actions">
+      <span style="font-size:0.72rem;color:#888;font-weight:600;margin-right:0.3rem">Alternatives:</span>
+      <span class="alt-pill">Escalate to Legal (0.82)</span>
+      <span class="alt-pill">Initiate Call (0.65)</span>
+      <span class="alt-pill">Payment Plan (0.55)</span>
+    </div>
+  </div>`;
+}
+
+function completeBanner(totalMs) {
+  return `<div class="complete-banner">
+    <span style="font-size:1.4rem">✅</span>
+    <div class="cb-text">
+      <b>Analysis Complete</b> — All 6 agents executed successfully.<br>
+      <span style="font-size:0.8rem;opacity:0.85">NBA recommendation: Offer Settlement · Confidence: 87%</span>
+    </div>
+    <span class="cb-time">${(totalMs/1000).toFixed(1)}s total</span>
+    <button class="btn btn-outline-white" onclick="alert('In live app: ← Back to Dashboard')">← Dashboard</button>
+  </div>`;
+}
+
+// ── Run simulation ────────────────────────────────────────────────────────────
+updateProgress(0, 'Starting pipeline…');
+
+events.forEach(function(ev) {
+  setTimeout(function() {
+    if (ev.type === 'run') {
+      setRunning(ev.id);
+      var pct = completedAgents * 14 + 5;
+      updateProgress(pct, 'Running: ' + ev.label + '…');
+    }
+    else if (ev.type === 'done') {
+      setDone(ev.id, ev.ms);
+      if (ev.id === 'cp') {
+        addCard(customerCard());
+      } else if (ev.id === 'ap') {
+        accountCard();
+      } else if (ev.id === 'arr') {
+        addCard(arrearsCard());
+      } else if (ev.id === 'dis') {
+        disputeCard();
+      } else if (ev.id === 'nba') {
+        addCard(nbaCard());
+        updateProgress(92, 'Building audit trail…');
+      }
+    }
+    else if (ev.type === 'complete') {
+      updateProgress(100, 'Complete');
+      var totalMs = Date.now() - startTime;
+      document.getElementById('cards').insertAdjacentHTML('afterbegin', completeBanner(totalMs));
+      document.getElementById('timeline').style.display = 'block';
+    }
+  }, ev.t);
+});
+</script>
+</body>
+</html>
