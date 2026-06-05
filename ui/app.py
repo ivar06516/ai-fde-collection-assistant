@@ -252,8 +252,29 @@ def _customer_banner(row: dict, wf_id: str = ""):
 
 # ── Module-level navigation helpers (accessible from all page blocks) ──────────
 def go_to_replay(workflow_id: str, full_state: dict, customer_id: str):
-    """Load a past run from DB into the analysis screen without running the pipeline."""
+    """Load a past run from DB into the analysis screen without running the pipeline.
+
+    workflow_audit excludes agent_statuses when saved, so we inject synthetic
+    completed statuses so the left pipeline panel and right cards all render correctly.
+    """
     row = next((r for r in (st.session_state.portfolio or []) if r["customer_id"] == customer_id), {})
+
+    # Inject synthetic completed agent statuses (not stored in DB)
+    _STAGE_MAP = {
+        "customer_profile":   1, "account_profile":    1,
+        "arrears_prediction": 2, "dispute":            2,
+        "nba":                3, "audit":              3,
+    }
+    if not full_state.get("agent_statuses"):
+        full_state["agent_statuses"] = {
+            name: {"stage": stage, "status": "completed",
+                   "elapsed_ms": None, "error": None,
+                   "started_at": None, "completed_at": None}
+            for name, stage in _STAGE_MAP.items()
+        }
+    # Ensure workflow is marked completed
+    full_state["workflow_status"] = "completed"
+
     st.session_state.workflow_id = workflow_id
     st.session_state.workflow_state = full_state
     st.session_state.pipeline_row = row
@@ -300,10 +321,24 @@ if st.session_state.page == "dashboard":
 
 
 
+    def _view_run_from_dashboard(wf_id, cid):
+        """Fetch full state for a specific workflow run and load it."""
+        import httpx as _httpx
+        from collection_assistant.config import get_settings as _gs
+        try:
+            settings = _gs()
+            resp = _httpx.get(f"{settings.streamlit_api_url}/collections/{wf_id}/audit", timeout=8)
+            if resp.status_code == 200:
+                full_state = resp.json().get("full_state") or {}
+                go_to_replay(wf_id, full_state, cid)
+            else:
+                st.error(f"Could not load run {wf_id}")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
     render_dashboard(st.session_state.portfolio, go_to_analysis,
                      on_view_customer=go_to_profile,
-                     on_view_run=lambda wf_id, cid: go_to_replay(
-                         wf_id, fetch_last_run(cid)["full_state"] or {}, cid))
+                     on_view_run=_view_run_from_dashboard)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -496,26 +531,15 @@ elif st.session_state.page == "profile":
     profile_runs = _fetch_runs(cid)
 
     def go_to_replay_from_profile(wf_id, customer_id):
-        lr = fetch_last_run(customer_id) or {}
-        # For non-latest runs, fetch the full state from the specific audit record
+        """Fetch audit record for any run and load it into the analysis screen."""
         import httpx as _httpx
         from collection_assistant.config import get_settings as _gs
-        import json as _json
         try:
             settings = _gs()
             resp = _httpx.get(f"{settings.streamlit_api_url}/collections/{wf_id}/audit", timeout=8)
             if resp.status_code == 200:
-                audit_data = resp.json()
-                full_state = audit_data.get("full_state") or {}
-                full_state["workflow_status"] = "completed"
-                full_state["agent_statuses"] = {
-                    "customer_profile": {"stage":1,"status":"completed","elapsed_ms":None,"error":None},
-                    "account_profile":  {"stage":1,"status":"completed","elapsed_ms":None,"error":None},
-                    "arrears_prediction":{"stage":2,"status":"completed","elapsed_ms":None,"error":None},
-                    "dispute":          {"stage":2,"status":"completed","elapsed_ms":None,"error":None},
-                    "nba":              {"stage":3,"status":"completed","elapsed_ms":None,"error":None},
-                    "audit":            {"stage":3,"status":"completed","elapsed_ms":None,"error":None},
-                }
+                full_state = resp.json().get("full_state") or {}
+                # go_to_replay injects synthetic agent_statuses if missing
                 go_to_replay(wf_id, full_state, customer_id)
             else:
                 st.error(f"Could not load run {wf_id}")
