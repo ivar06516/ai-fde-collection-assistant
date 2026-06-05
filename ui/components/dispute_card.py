@@ -17,7 +17,7 @@ STATUS_COLORS = {
 
 
 def render_dispute_card(summary: dict) -> None:
-    st.markdown("### Dispute Summary")
+    st.markdown("### Dispute Summary", help="Active disputes on this account. A Collection Hold means no outbound contact is permitted until resolved.")
     if not summary:
         st.warning("No dispute data")
         return

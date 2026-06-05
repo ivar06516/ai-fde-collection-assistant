@@ -204,8 +204,12 @@ with st.sidebar:
         ("Critical  — Rahul Singh",    "CUST-003", "ACC-003", "routine_review",  "DPD=92, high risk, critical arrears"),
         ("Hardship  — Kavita Patel",   "CUST-004", "ACC-004", "hardship_claim",  "Hardship flag, unemployment, DPD=35"),
     ]
+    last_demo_cid = st.session_state.get("_last_demo_cid")
     for label, cid, aid, trigger, tooltip in DEMO_SCENARIOS:
-        if st.button(label, use_container_width=True, help=tooltip, key=f"demo_{cid}"):
+        is_last = (cid == last_demo_cid)
+        btn_label = f"{'▶ ' if is_last else ''}{label}"
+        if st.button(btn_label, use_container_width=True, help=tooltip, key=f"demo_{cid}",
+                     type="primary" if is_last else "secondary"):
             if st.session_state.page == "dashboard" and st.session_state.portfolio:
                 row = next((r for r in st.session_state.portfolio if r["customer_id"] == cid), {})
                 st.session_state.workflow_id = None
@@ -215,6 +219,7 @@ with st.sidebar:
                 st.session_state.dash_trigger  = trigger
                 st.session_state.workflow_mode = "live"
                 st.session_state.workflow_state = None
+                st.session_state["_last_demo_cid"] = cid
                 st.session_state.page = "analysis"
                 st.rerun()
             else:
@@ -414,10 +419,11 @@ elif st.session_state.page == "analysis":
         except Exception as e:
             st.error(
                 "**Analysis could not start.** "
-                "The AI service may be temporarily unavailable. "
-                "Please check the API server is running, then try again."
+                "The AI service may be temporarily unavailable."
             )
             st.caption(f"Technical detail: {str(e)[:120]}")
+            if st.button("🔄 Try Again", type="primary", key="retry_pipeline"):
+                st.rerun()
         st.stop()
 
     wf_id = st.session_state.workflow_id
@@ -510,9 +516,16 @@ elif st.session_state.page == "analysis":
                 )
 
             # ── Tabs: one click to any output, zero scroll ────────────────
-            tab_nba_label  = "⭐ NBA" + (" ✓" if nba_done  else " ⟳")
-            tab_pred_label = "📊 Predictions" + (" ✓" if arr_done and dis_done else " ⟳")
-            tab_audit_label= "📋 Audit Trail" + (" ✓" if audit_done else " ⟳")
+            nba_error  = agent_statuses.get("nba",{}).get("status") == "error"
+            arr_error  = agent_statuses.get("arrears_prediction",{}).get("status") == "error"
+            dis_error  = agent_statuses.get("dispute",{}).get("status") == "error"
+            aud_error  = agent_statuses.get("audit",{}).get("status") == "error"
+
+            tab_nba_label  = ("⭐ NBA ✓" if nba_done else "⭐ NBA ✗" if nba_error else "⭐ NBA ⟳")
+            tab_pred_label = ("📊 Predictions ✓" if arr_done and dis_done
+                              else "📊 Predictions ✗" if arr_error or dis_error
+                              else "📊 Predictions ⟳")
+            tab_audit_label= ("📋 Audit Trail ✓" if audit_done else "📋 Audit Trail ✗" if aud_error else "📋 Audit Trail ⟳")
 
             t1, t2, t3 = st.tabs([tab_nba_label, tab_pred_label, tab_audit_label])
 

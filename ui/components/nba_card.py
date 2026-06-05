@@ -30,7 +30,7 @@ def _badge(style, text):
 
 
 def render_nba_card(recommendation: dict) -> None:
-    st.markdown("### Next Best Action")
+    st.markdown("### Next Best Action", help="The AI-recommended collection action, synthesised from customer profile, arrears prediction, and dispute status.")
     if not recommendation:
         st.warning("No recommendation available")
         return

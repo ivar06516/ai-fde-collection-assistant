@@ -81,10 +81,16 @@ def render_execution_panel(agent_statuses: dict) -> None:
     )
 
     for stage_label, agent_keys in STAGE_GROUPS:
+        STAGE_TOOLTIPS = {
+            "Stage 1 — Parallel":    "Customer Profile + Account Profile run simultaneously",
+            "Stage 2 — Parallel":    "Arrears Prediction + Dispute Detection run simultaneously",
+            "Stage 3 — Sequential":  "Next Best Action → Audit Trail run in order",
+        }
+        tip = STAGE_TOOLTIPS.get(stage_label, "")
         st.markdown(
-            f'<div style="background:#F3E5F5;color:#4A148C;font-size:0.75rem;font-weight:700;'
+            f'<div title="{tip}" style="background:#F3E5F5;color:#4A148C;font-size:0.75rem;font-weight:700;'
             f'text-transform:uppercase;letter-spacing:0.05em;padding:2px 8px;border-radius:4px;'
-            f'display:inline-block;margin-bottom:0.4rem">{stage_label}</div>',
+            f'display:inline-block;margin-bottom:0.4rem;cursor:help;border-bottom:1px dashed #9b59b6">{stage_label}</div>',
             unsafe_allow_html=True,
         )
         nodes_html = "".join(_agent_node(k, agent_statuses.get(k, {})) for k in agent_keys)

@@ -183,3 +183,30 @@ footer                          { display:none !important; }
 
 /* ── Page background ── */
 .stApp { background: var(--bg) !important; }
+
+
+/* ── Pagination touch targets — min 44px (WCAG 2.5.5) ── */
+[data-testid="stHorizontalBlock"] .stButton > button[data-testid="baseButton-secondary"] {
+    min-height: 44px !important;
+}
+
+/* ── Sidebar subtitle ── */
+[data-testid="stSidebar"] .app-subtitle {
+    color: #999 !important;
+    font-size: 0.75rem !important;
+}
+
+/* ── Dashed tooltip underline on hover elements ── */
+[title] { cursor: help; }
+
+/* ── Metric label uppercase (ensures readability at 0.75rem) ── */
+[data-testid="stMetricLabel"] {
+    letter-spacing: 0.04em !important;
+    min-height: 20px !important;
+}
+
+/* ── Table row min-height for consistent rhythm ── */
+[data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+    min-height: 52px;
+}

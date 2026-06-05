@@ -91,7 +91,7 @@ def _risk_factors_bar_chart(factors: list) -> go.Figure:
 
 
 def render_arrears_card(prediction: dict, current_dpd: int = 0) -> None:
-    st.markdown("### 📊 Arrears Prediction")
+    st.markdown("### 📊 Arrears Prediction", help="AI forecast of how this account's overdue payments will evolve over the next 30/60/90 days.")
     if not prediction:
         st.warning("No arrears prediction data")
         return

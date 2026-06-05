@@ -258,15 +258,29 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 unsafe_allow_html=True)
         with c2:
             rs = RISK_STYLE.get(risk, "background:#eee;color:#333")
-            st.markdown(_badge(risk.upper(), rs), unsafe_allow_html=True)
+            risk_label = risk.upper() + (" ⚠" if hship else "")
+            st.markdown(_badge(risk_label, rs), unsafe_allow_html=True)
+            if hship and hreason:
+                st.markdown(
+                    f'<div style="font-size:0.75rem;color:#4527A0;margin-top:2px">{hreason.title()}</div>',
+                    unsafe_allow_html=True)
         with c3:
             st.markdown(_badge(prod, "background:#EDE7F6;color:#4527A0"), unsafe_allow_html=True)
         with c4:
             ss = STATUS_STYLE.get(stat, "background:#eee;color:#333")
             st.markdown(_badge(stat.title(), ss), unsafe_allow_html=True)
         with c5:
+            if dpd == 0:
+                dpd_icon = "✓"
+            elif dpd <= 30:
+                dpd_icon = "⚠"
+            elif dpd <= 90:
+                dpd_icon = "⚠"
+            else:
+                dpd_icon = "⛔"
             st.markdown(
-                f'<div style="font-size:1.1rem;font-weight:800;color:{dpd_clr}">{dpd}</div>',
+                f'<div style="font-size:1rem;font-weight:800;color:{dpd_clr}">'
+                f'{dpd} <span style="font-size:0.75rem">{dpd_icon}</span></div>',
                 unsafe_allow_html=True)
         with c6:
             st.markdown(f'<div style="font-size:0.9rem;font-weight:600">${bal:,.0f}</div>',
@@ -288,8 +302,9 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                     f'<div style="font-size:0.75rem;font-weight:700;color:#A100FF">{action_label}</div>'
                     f'<div style="font-size:0.75rem;color:#616161">{conf:.0%} · {run_at}</div>',
                     unsafe_allow_html=True)
-                if st.button("↗ View", key=f"view_run_{cid}", use_container_width=True,
-                             help=f"Replay {action_label} run from {run_at}"):
+                if st.button("↗ View Result", key=f"view_run_{cid}", use_container_width=True,
+                             help=f"Replay this {action_label} result in the Analysis page",
+                             type="secondary"):
                     if on_view_run:
                         on_view_run(lr["workflow_id"], cid)
             else:
