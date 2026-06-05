@@ -421,53 +421,62 @@ elif st.session_state.page == "analysis":
                 '<div style="text-align:center;padding:3rem;color:#aaa">'
                 '<div style="font-size:3rem">⚙</div>'
                 '<div style="font-size:1rem;font-weight:600;margin-top:0.5rem">Pipeline Running</div>'
-                '<div style="font-size:0.85rem;margin-top:0.3rem">Agent outputs appear as each stage completes</div>'
+                '<div style="font-size:0.85rem;margin-top:0.3rem">Results appear below as each stage completes</div>'
                 '</div>', unsafe_allow_html=True)
         else:
-            # ── Complete banner (full width, compact) ─────────────────────
+            # ── Complete banner (always visible, compact) ─────────────────
             if workflow_status == "completed":
                 nba_rec  = state.get("nba_recommendation") or {}
                 total_ms = state.get("total_ms", 0) or 0
                 st.markdown(
                     f'<div style="background:linear-gradient(90deg,#1B5E20,#2E7D32);color:white;'
-                    f'border-radius:8px;padding:0.6rem 1rem;display:flex;align-items:center;'
-                    f'gap:0.8rem;margin-bottom:0.8rem">'
+                    f'border-radius:8px;padding:0.55rem 1rem;display:flex;align-items:center;'
+                    f'gap:0.8rem;margin-bottom:0.6rem">'
                     f'<span>✅</span>'
-                    f'<span style="flex:1;font-weight:700;font-size:0.9rem">Analysis Complete</span>'
-                    f'<span style="font-size:0.82rem;opacity:0.85">'
+                    f'<span style="flex:1;font-weight:700;font-size:0.88rem">Analysis Complete</span>'
+                    f'<span style="font-size:0.8rem;opacity:0.9">'
                     f'NBA: <b>{nba_rec.get("action","—").replace("_"," ").title()}</b>'
-                    f' · {nba_rec.get("confidence_score",0):.0%} confidence</span>'
+                    f' · <b>{nba_rec.get("confidence_score",0):.0%}</b></span>'
                     f'<span style="background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:6px;'
-                    f'font-size:0.78rem;font-weight:600">{total_ms/1000:.1f}s</span></div>',
+                    f'font-size:0.75rem;font-weight:600">{total_ms/1000:.1f}s</span></div>',
                     unsafe_allow_html=True,
                 )
 
-            # ── 3-column results grid: NBA | Arrears | Dispute ────────────
-            r1, r2, r3 = st.columns(3, gap="small")
+            # ── Tabs: one click to any output, zero scroll ────────────────
+            tab_nba_label  = "⭐ NBA" + (" ✓" if nba_done  else " ⟳")
+            tab_pred_label = "📊 Predictions" + (" ✓" if arr_done and dis_done else " ⟳")
+            tab_audit_label= "📋 Audit Trail" + (" ✓" if audit_done else " ⟳")
 
-            with r1:
+            t1, t2, t3 = st.tabs([tab_nba_label, tab_pred_label, tab_audit_label])
+
+            with t1:
                 if nba_done:
                     render_nba_card(state.get("nba_recommendation") or {})
                 else:
-                    _placeholder("⭐", "Next Best Action")
+                    _placeholder("⭐", "Next Best Action — waiting for Stage 3")
 
-            with r2:
-                if arr_done:
-                    dpd_now = (state.get("account_profile") or {}).get("days_past_due", 0)
-                    render_arrears_card(state.get("arrears_prediction") or {}, current_dpd=dpd_now)
+            with t2:
+                if arr_done or dis_done:
+                    p1, p2 = st.columns(2, gap="medium")
+                    with p1:
+                        if arr_done:
+                            dpd_now = (state.get("account_profile") or {}).get("days_past_due", 0)
+                            render_arrears_card(state.get("arrears_prediction") or {}, current_dpd=dpd_now)
+                        else:
+                            _placeholder("📊", "Arrears Prediction — waiting for Stage 2")
+                    with p2:
+                        if dis_done:
+                            render_dispute_card(state.get("dispute_summary") or {})
+                        else:
+                            _placeholder("⚖", "Dispute Detection — waiting for Stage 2")
                 else:
-                    _placeholder("📊", "Arrears Prediction")
+                    _placeholder("📊", "Predictions — waiting for Stage 2")
 
-            with r3:
-                if dis_done:
-                    render_dispute_card(state.get("dispute_summary") or {})
+            with t3:
+                if audit_done:
+                    render_audit_panel(state.get("audit_record") or {}, wf_id)
                 else:
-                    _placeholder("⚖", "Dispute Detection")
-
-            # ── Audit Trail (full width, collapsed by default) ────────────
-            if audit_done:
-                st.markdown("")
-                render_audit_panel(state.get("audit_record") or {}, wf_id)
+                    _placeholder("📋", "Audit Trail — waiting for pipeline to complete")
 
     # Keep polling — skip when replaying a stored result
     if st.session_state.get("workflow_mode") != "replay" and workflow_status not in ("completed","error"):
