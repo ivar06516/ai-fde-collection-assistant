@@ -348,15 +348,8 @@ elif st.session_state.page == "analysis":
     wf_id   = st.session_state.workflow_id
     row     = st.session_state.get("pipeline_row") or {}
 
-    # Breadcrumb
-    bc1, bc2 = st.columns([6,1])
-    with bc1:
-        st.markdown(
-            '<span style="font-size:0.78rem;color:#888">'
-            '<a href="#" style="color:#A100FF;text-decoration:none">Dashboard</a>'
-            ' › <b>Analysis</b></span>',
-            unsafe_allow_html=True,
-        )
+    # Back button (breadcrumb already in header)
+    _, bc2 = st.columns([6, 1])
     with bc2:
         if st.button("← Dashboard"):
             st.session_state.page = "dashboard"
@@ -486,15 +479,8 @@ elif st.session_state.page == "analysis":
 # PAGE 3 — CUSTOMER PROFILE
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "profile":
-    # Breadcrumb
-    bc1, bc2 = st.columns([5, 1])
-    with bc1:
-        st.markdown(
-            '<span style="font-size:0.78rem;color:#888">'
-            '<a href="#" style="color:#A100FF;text-decoration:none">Dashboard</a>'
-            ' › <b>Customer Profile</b></span>',
-            unsafe_allow_html=True,
-        )
+    # Back button (breadcrumb already in header)
+    _, bc2 = st.columns([5, 1])
     with bc2:
         if st.button("← Dashboard"):
             st.session_state.page = "dashboard"
