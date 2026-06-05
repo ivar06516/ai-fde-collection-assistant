@@ -35,7 +35,7 @@ def _gauge_chart(value: float) -> go.Figure:
             },
         },
     ))
-    fig.update_layout(height=240, margin=dict(l=20, r=20, t=40, b=10))
+    fig.update_layout(height=190, margin=dict(l=10, r=10, t=30, b=10))
     return fig
 
 
@@ -51,7 +51,7 @@ def _dpd_forecast_chart(current: int, d30: int, d60: int, d90: int) -> go.Figure
         fillcolor="rgba(161,0,255,0.08)",
     ))
     fig.update_layout(
-        title="DPD Forecast", height=220,
+        title="DPD Forecast", height=190,
         yaxis_title="Days Past Due", margin=dict(l=10, r=10, t=40, b=10),
     )
     return fig
@@ -84,7 +84,7 @@ def _risk_factors_bar_chart(factors: list) -> go.Figure:
         title="Risk Factor Weights",
         xaxis={"range": [0, 1.1], "tickformat": ".0%", "title": "Weight"},
         yaxis={"autorange": "reversed"},
-        height=max(180, len(names) * 38),
+        height=max(140, len(names) * 30),
         margin=dict(l=10, r=50, t=40, b=10),
     )
     return fig

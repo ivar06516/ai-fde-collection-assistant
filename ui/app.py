@@ -403,71 +403,71 @@ elif st.session_state.page == "analysis":
             st.rerun()
 
     with col_right:
-        # Summary zone: Complete banner + NBA
-        nba_done = (agent_statuses.get("nba",{}).get("status")=="completed"
-                    and state.get("nba_recommendation"))
-
-        if workflow_status == "completed":
-            nba_rec = state.get("nba_recommendation") or {}
-            total_ms = state.get("total_ms", 0) or 0
-            st.markdown(
-                f'<div style="background:linear-gradient(90deg,#1B5E20,#2E7D32);color:white;'
-                f'border-radius:10px;padding:0.8rem 1.2rem;display:flex;align-items:center;'
-                f'gap:1rem;margin-bottom:0.8rem;flex-wrap:wrap">'
-                f'<span style="font-size:1.3rem">✅</span>'
-                f'<div style="flex:1">'
-                f'<div style="font-weight:700">Analysis Complete — All 6 agents executed successfully</div>'
-                f'<div style="font-size:0.82rem;opacity:0.85;margin-top:2px">'
-                f'NBA: <b>{nba_rec.get("action","—").replace("_"," ").title()}</b>'
-                f' · Confidence: <b>{nba_rec.get("confidence_score",0):.0%}</b></div></div>'
-                f'<span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:8px;'
-                f'font-size:0.8rem;font-weight:600">{total_ms/1000:.1f}s</span></div>',
-                unsafe_allow_html=True,
-            )
-
-        if nba_done:
-            render_nba_card(state.get("nba_recommendation") or {})
-
-        if nba_done or workflow_status == "completed":
-            st.markdown('<hr style="border:none;border-top:2px dashed #E8E8E8;margin:0.8rem 0 1rem">',
-                        unsafe_allow_html=True)
-
-        # Page 2 shows ONLY Stage 2 + Stage 3 agent results.
-        # Customer Profile and Account Profile cards are on Page 3 only.
-        arr = agent_statuses.get("arrears_prediction",{}).get("status") == "completed"
-        dis = agent_statuses.get("dispute",{}).get("status") == "completed"
-        s1_done = (agent_statuses.get("customer_profile",{}).get("status") == "completed"
-                   or agent_statuses.get("account_profile",{}).get("status") == "completed")
+        nba_done  = (agent_statuses.get("nba",{}).get("status")=="completed" and state.get("nba_recommendation"))
+        arr_done  = agent_statuses.get("arrears_prediction",{}).get("status") == "completed"
+        dis_done  = agent_statuses.get("dispute",{}).get("status") == "completed"
+        audit_done= agent_statuses.get("audit",{}).get("status") == "completed"
+        any_done  = nba_done or arr_done or dis_done
 
         def _placeholder(icon, label):
             st.markdown(
-                f'<div style="border:2px dashed #E8E8E8;border-radius:10px;padding:2rem;'
-                f'text-align:center;color:#ccc"><div style="font-size:2rem">{icon}</div>'
-                f'<div style="margin-top:0.4rem;font-size:0.85rem">{label}<br>Loading…</div></div>',
+                f'<div style="border:2px dashed #E8E8E8;border-radius:10px;padding:1.5rem;'
+                f'text-align:center;color:#ccc"><div style="font-size:1.6rem">{icon}</div>'
+                f'<div style="margin-top:0.3rem;font-size:0.8rem">{label}<br>Loading…</div></div>',
                 unsafe_allow_html=True)
 
-        # Stage 2 results
-        if arr or dis:
-            c3, c4 = st.columns(2)
-            with c3:
-                if arr:
+        if not any_done:
+            st.markdown(
+                '<div style="text-align:center;padding:3rem;color:#aaa">'
+                '<div style="font-size:3rem">⚙</div>'
+                '<div style="font-size:1rem;font-weight:600;margin-top:0.5rem">Pipeline Running</div>'
+                '<div style="font-size:0.85rem;margin-top:0.3rem">Agent outputs appear as each stage completes</div>'
+                '</div>', unsafe_allow_html=True)
+        else:
+            # ── Complete banner (full width, compact) ─────────────────────
+            if workflow_status == "completed":
+                nba_rec  = state.get("nba_recommendation") or {}
+                total_ms = state.get("total_ms", 0) or 0
+                st.markdown(
+                    f'<div style="background:linear-gradient(90deg,#1B5E20,#2E7D32);color:white;'
+                    f'border-radius:8px;padding:0.6rem 1rem;display:flex;align-items:center;'
+                    f'gap:0.8rem;margin-bottom:0.8rem">'
+                    f'<span>✅</span>'
+                    f'<span style="flex:1;font-weight:700;font-size:0.9rem">Analysis Complete</span>'
+                    f'<span style="font-size:0.82rem;opacity:0.85">'
+                    f'NBA: <b>{nba_rec.get("action","—").replace("_"," ").title()}</b>'
+                    f' · {nba_rec.get("confidence_score",0):.0%} confidence</span>'
+                    f'<span style="background:rgba(255,255,255,0.2);padding:2px 10px;border-radius:6px;'
+                    f'font-size:0.78rem;font-weight:600">{total_ms/1000:.1f}s</span></div>',
+                    unsafe_allow_html=True,
+                )
+
+            # ── 3-column results grid: NBA | Arrears | Dispute ────────────
+            r1, r2, r3 = st.columns(3, gap="small")
+
+            with r1:
+                if nba_done:
+                    render_nba_card(state.get("nba_recommendation") or {})
+                else:
+                    _placeholder("⭐", "Next Best Action")
+
+            with r2:
+                if arr_done:
                     dpd_now = (state.get("account_profile") or {}).get("days_past_due", 0)
                     render_arrears_card(state.get("arrears_prediction") or {}, current_dpd=dpd_now)
                 else:
-                    _placeholder("📊","Arrears Prediction")
-            with c4:
-                render_dispute_card(state.get("dispute_summary") or {}) if dis else _placeholder("⚖","Dispute Detection")
+                    _placeholder("📊", "Arrears Prediction")
 
-        if not s1_done:
-            st.markdown('<div style="text-align:center;padding:3rem;color:#aaa">'
-                        '<div style="font-size:3rem">⚙</div>'
-                        '<div style="font-size:1rem;font-weight:600;margin-top:0.5rem">Pipeline Running</div>'
-                        '<div style="font-size:0.85rem;margin-top:0.3rem">Agent outputs appear as each stage completes</div>'
-                        '</div>', unsafe_allow_html=True)
+            with r3:
+                if dis_done:
+                    render_dispute_card(state.get("dispute_summary") or {})
+                else:
+                    _placeholder("⚖", "Dispute Detection")
 
-        # Audit trail at bottom
-        if agent_statuses.get("audit",{}).get("status") == "completed":
-            render_audit_panel(state.get("audit_record") or {}, wf_id)
+            # ── Audit Trail (full width, collapsed by default) ────────────
+            if audit_done:
+                st.markdown("")
+                render_audit_panel(state.get("audit_record") or {}, wf_id)
 
     # Keep polling — skip when replaying a stored result
     if st.session_state.get("workflow_mode") != "replay" and workflow_status not in ("completed","error"):
