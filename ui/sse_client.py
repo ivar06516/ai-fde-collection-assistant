@@ -92,3 +92,30 @@ def fetch_customer_detail(customer_id: str) -> dict | None:
         return resp.json() if resp.status_code == 200 else None
     except Exception:
         return None
+
+
+def fetch_last_run(customer_id: str) -> dict | None:
+    """Return the most recent completed analysis run for a customer."""
+    settings = get_settings()
+    try:
+        resp = httpx.get(
+            f"{settings.streamlit_api_url}/collections/data/customer/{customer_id}/last-run",
+            timeout=8,
+        )
+        data = resp.json() if resp.status_code == 200 else {}
+        return data if data else None
+    except Exception:
+        return None
+
+
+def fetch_customer_runs(customer_id: str) -> list[dict]:
+    """Return all completed runs for a customer, newest first (max 10)."""
+    settings = get_settings()
+    try:
+        resp = httpx.get(
+            f"{settings.streamlit_api_url}/collections/data/customer/{customer_id}/runs",
+            timeout=8,
+        )
+        return resp.json() if resp.status_code == 200 else []
+    except Exception:
+        return []

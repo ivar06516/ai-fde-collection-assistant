@@ -197,9 +197,36 @@ async def get_portfolio() -> list:
         for d in active_disputes:
             dispute_counts[d.account_id] = dispute_counts.get(d.account_id, 0) + 1
 
+        # Last run lookup per customer (most recent completed workflow)
+        from collection_assistant.db.models import WorkflowAudit
+        from sqlalchemy import func as _func
+        last_runs_q = (
+            session.query(
+                WorkflowAudit.customer_id,
+                WorkflowAudit.workflow_id,
+                WorkflowAudit.nba_action,
+                WorkflowAudit.nba_confidence,
+                WorkflowAudit.created_at,
+            )
+            .filter(WorkflowAudit.status == "completed", WorkflowAudit.nba_action.isnot(None))
+            .order_by(WorkflowAudit.created_at.desc())
+            .all()
+        )
+        # Keep only the most recent per customer
+        last_run_map = {}
+        for lr in last_runs_q:
+            if lr.customer_id not in last_run_map:
+                last_run_map[lr.customer_id] = {
+                    "workflow_id": lr.workflow_id,
+                    "nba_action":  lr.nba_action,
+                    "nba_confidence": lr.nba_confidence,
+                    "run_at": str(lr.created_at)[:16],
+                }
+
         result = []
         for c, a in rows:
             dpd = a.days_past_due or 0
+            lr = last_run_map.get(c.customer_id)
             result.append({
                 "customer_id":       c.customer_id,
                 "account_id":        a.account_id,
@@ -224,9 +251,64 @@ async def get_portfolio() -> list:
                     "31-60"   if dpd <= 60 else
                     "61-90"   if dpd <= 90 else "90+"
                 ),
+                "last_run": lr,
             })
         return result
 
+
+
+@router.get("/data/customer/{customer_id}/last-run")
+async def get_customer_last_run(customer_id: str) -> dict:
+    """Return the most recent completed workflow run for a customer."""
+    import json as _json
+    with db_session() as session:
+        from collection_assistant.db.models import WorkflowAudit
+        record = (
+            session.query(WorkflowAudit)
+            .filter(WorkflowAudit.customer_id == customer_id,
+                    WorkflowAudit.status == "completed",
+                    WorkflowAudit.nba_action.isnot(None))
+            .order_by(WorkflowAudit.created_at.desc())
+            .first()
+        )
+        if not record:
+            return {}
+        return {
+            "workflow_id":    record.workflow_id,
+            "customer_id":    record.customer_id,
+            "account_id":     record.account_id,
+            "trigger_context":record.trigger_context,
+            "nba_action":     record.nba_action,
+            "nba_channel":    record.nba_channel,
+            "nba_confidence": record.nba_confidence,
+            "nba_rationale":  record.nba_rationale,
+            "status":         record.status,
+            "total_ms":       record.total_ms,
+            "created_at":     str(record.created_at),
+            "full_state":     _json.loads(record.full_state_json) if record.full_state_json else None,
+        }
+
+
+@router.get("/data/customer/{customer_id}/runs")
+async def get_customer_runs(customer_id: str) -> list:
+    """Return all completed workflow runs for a customer, newest first."""
+    with db_session() as session:
+        from collection_assistant.db.models import WorkflowAudit
+        records = (
+            session.query(WorkflowAudit)
+            .filter(WorkflowAudit.customer_id == customer_id,
+                    WorkflowAudit.status == "completed")
+            .order_by(WorkflowAudit.created_at.desc())
+            .limit(10)
+            .all()
+        )
+        return [
+            {"workflow_id": r.workflow_id, "account_id": r.account_id,
+             "nba_action": r.nba_action, "nba_confidence": r.nba_confidence,
+             "trigger_context": r.trigger_context, "total_ms": r.total_ms,
+             "created_at": str(r.created_at)}
+            for r in records
+        ]
 
 
 @router.get("/data/customer/{customer_id}")

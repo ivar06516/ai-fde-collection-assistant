@@ -44,7 +44,7 @@ def _kpi(label, value, sub, color):
             f'<div style="font-size:0.75rem;color:#888;margin-top:0.3rem">{sub}</div></div>')
 
 
-def render_dashboard(portfolio, on_run_analysis, on_view_customer=None):
+def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_run=None):
     """Render the customer portfolio dashboard."""
     total        = len(portfolio)
     delinquent   = sum(1 for r in portfolio if r["account_status"] == "delinquent")
@@ -140,9 +140,9 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None):
         return
 
     # Column headers
-    h_cols = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 1.5])
+    h_cols = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 1.5])
     for col_widget, label in zip(h_cols, ["Customer", "Risk", "Product", "Status",
-                                           "DPD", "Outstanding", "Hold", "Profile / Analyse"]):
+                                           "DPD", "Outstanding", "Hold", "Last Run", "Actions"]):
         with col_widget:
             st.markdown(
                 f'<div style="font-size:0.72rem;font-weight:700;color:#888;'
@@ -167,7 +167,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None):
         dpd_clr = DPD_COLOR.get(band, "#333")
         is_sel  = (st.session_state.get("dash_selected") or {}).get("customer_id") == cid
 
-        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 1.5])
+        c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 1.5])
         with c1:
             bg = "#F3E5F5" if is_sel else "transparent"
             hp_html = (f'<div style="font-size:0.7rem;color:#4527A0">Hardship: {hreason or "Active"}</div>'
@@ -201,6 +201,22 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None):
                 st.markdown(_badge("No Hold", "background:#E8F5E9;color:#137333"),
                             unsafe_allow_html=True)
         with c8:
+            lr = row.get("last_run")
+            if lr:
+                action_label = (lr.get("nba_action") or "").replace("_"," ").title()
+                conf = lr.get("nba_confidence") or 0
+                run_at = (lr.get("run_at") or "")[:16]
+                st.markdown(
+                    f'<div style="font-size:0.75rem;font-weight:700;color:#A100FF">{action_label}</div>'
+                    f'<div style="font-size:0.68rem;color:#888">{conf:.0%} · {run_at}</div>',
+                    unsafe_allow_html=True)
+                if st.button("View", key=f"view_run_{cid}", use_container_width=True):
+                    if on_view_run:
+                        on_view_run(lr["workflow_id"], cid)
+            else:
+                st.markdown('<div style="font-size:0.75rem;color:#ccc">No runs yet</div>',
+                            unsafe_allow_html=True)
+        with c9:
             sub1, sub2 = st.columns(2)
             with sub1:
                 if st.button("Profile", key=f"view_{cid}", use_container_width=True):

@@ -43,7 +43,7 @@ def _payment_chart(payment_history: list) -> go.Figure:
     return fig
 
 
-def render_customer_profile_page(detail: dict, on_run_analysis) -> None:
+def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = None, on_view_run=None) -> None:
     """Render the full customer profile page."""
 
     # ── Page header + breadcrumb ───────────────────────────────────────────
@@ -182,7 +182,52 @@ def render_customer_profile_page(detail: dict, on_run_analysis) -> None:
         if resolved:
             st.caption(f"✅ {len(resolved)} resolved dispute(s)")
 
-    # ── Section 4: Interaction History ────────────────────────────────────
+    # ── Section 4: Previous Analysis Runs ────────────────────────────────
+    if runs:
+        import streamlit as _st
+        _st.markdown("#### Previous Analysis Runs")
+        ACTION_COLORS = {
+            "offer_settlement":"#00695C","escalate_to_legal":"#4A148C",
+            "initiate_call":"#1565C0","place_on_hold":"#C62828",
+            "no_action_required":"#137333","offer_payment_plan":"#E65100",
+            "send_sms":"#2E7D32","send_email":"#4527A0","flag_for_writeoff":"#333",
+        }
+        for run in runs[:5]:
+            action = run.get("nba_action","—")
+            conf   = run.get("nba_confidence") or 0
+            run_at = (run.get("created_at") or "")[:16]
+            ms     = run.get("total_ms") or 0
+            trigger= (run.get("trigger_context") or "").replace("_"," ").title()
+            a_color= ACTION_COLORS.get(action,"#888")
+            wf_id  = run.get("workflow_id","")
+            cols = _st.columns([2, 2, 1.5, 1.5, 1])
+            with cols[0]:
+                _st.markdown(
+                    f'<div style="font-weight:700;color:{a_color}">{action.replace("_"," ").title()}</div>'
+                    f'<div style="font-size:0.72rem;color:#888">{trigger}</div>',
+                    unsafe_allow_html=True)
+            with cols[1]:
+                _st.markdown(
+                    f'<div style="font-size:0.85rem;color:#888">{run_at}</div>',
+                    unsafe_allow_html=True)
+            with cols[2]:
+                _st.markdown(
+                    f'<div style="font-weight:700;color:{a_color}">{conf:.0%}</div>'
+                    f'<div style="font-size:0.7rem;color:#888">confidence</div>',
+                    unsafe_allow_html=True)
+            with cols[3]:
+                _st.markdown(
+                    f'<div style="font-size:0.82rem;color:#888">{ms/1000:.1f}s</div>',
+                    unsafe_allow_html=True)
+            with cols[4]:
+                if _st.button("View", key=f"run_view_{wf_id}", use_container_width=True):
+                    if on_view_run:
+                        on_view_run(wf_id, detail["customer_id"])
+            _st.markdown('<hr style="border:none;border-top:1px solid #F5F5F5;margin:2px 0">',
+                         unsafe_allow_html=True)
+        _st.markdown("")
+
+    # ── Section 5: Interaction History ────────────────────────────────────
     interactions = detail.get("interactions", [])
     if interactions:
         st.markdown("#### Interaction History")

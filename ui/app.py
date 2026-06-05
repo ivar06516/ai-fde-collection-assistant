@@ -32,8 +32,8 @@ from ui.components.dispute_card import render_dispute_card
 from ui.components.execution_panel import render_execution_panel
 from ui.components.nba_card import render_nba_card
 from ui.sse_client import (
-    fetch_customer_detail, fetch_portfolio,
-    get_workflow_state, trigger_pipeline,
+    fetch_customer_detail, fetch_customer_runs, fetch_last_run,
+    fetch_portfolio, get_workflow_state, trigger_pipeline,
 )
 
 PRODUCT_LABELS = {
@@ -64,6 +64,7 @@ for k, v in [
     ("portfolio",None),
     ("dash_trigger","routine_review"),
     ("dash_selected",None),
+    ("workflow_mode","live"),   # live | replay
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -169,7 +170,22 @@ if st.session_state.page == "dashboard":
         st.session_state.page = "profile"
         st.rerun()
 
-    render_dashboard(st.session_state.portfolio, go_to_analysis, on_view_customer=go_to_profile)
+    def go_to_replay(workflow_id: str, full_state: dict, customer_id: str):
+        """Load a past run from DB into the analysis screen without running the pipeline."""
+        row = next((r for r in st.session_state.portfolio if r["customer_id"] == customer_id), {})
+        st.session_state.workflow_id = workflow_id
+        st.session_state.workflow_state = full_state
+        st.session_state.pipeline_row = row
+        st.session_state.workflow_mode = "replay"
+        st.session_state.page = "analysis"
+        st.rerun()
+
+
+
+    render_dashboard(st.session_state.portfolio, go_to_analysis,
+                     on_view_customer=go_to_profile,
+                     on_view_run=lambda wf_id, cid: go_to_replay(
+                         wf_id, fetch_last_run(cid)["full_state"] or {}, cid))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -196,8 +212,11 @@ elif st.session_state.page == "analysis":
     # Customer banner
     _customer_banner(row, wf_id)
 
-    # Poll state
-    state = get_workflow_state(wf_id) or {}
+    # State: live pipeline polls API; replay loads stored state from session
+    if st.session_state.get("workflow_mode") == "replay":
+        state = st.session_state.get("workflow_state") or {}
+    else:
+        state = get_workflow_state(wf_id) or {}
     agent_statuses = state.get("agent_statuses", {})
     workflow_status = state.get("workflow_status", "in_progress")
 
@@ -207,7 +226,7 @@ elif st.session_state.page == "analysis":
     progress_pct = 100 if workflow_status=="completed" else min(int(done_count/6*95), 95)
     bar_color    = "#137333" if workflow_status=="completed" else "#A100FF"
     if workflow_status=="completed":
-        prog_label = "Analysis complete"
+        prog_label = "Replaying stored result" if st.session_state.get('workflow_mode') == 'replay' else "Analysis complete"
     elif in_run:
         names = [k.replace("_"," ").title() for k,v in agent_statuses.items() if v.get("status")=="running"]
         prog_label = f"Running: {', '.join(names)}…"
@@ -304,8 +323,8 @@ elif st.session_state.page == "analysis":
         if agent_statuses.get("audit",{}).get("status") == "completed":
             render_audit_panel(state.get("audit_record") or {}, wf_id)
 
-    # Keep polling
-    if workflow_status not in ("completed","error"):
+    # Keep polling — skip when replaying a stored result
+    if st.session_state.get("workflow_mode") != "replay" and workflow_status not in ("completed","error"):
         time.sleep(1)
         st.rerun()
 
@@ -354,4 +373,36 @@ elif st.session_state.page == "profile":
             except Exception as e:
                 st.error(f"Failed to start pipeline: {e}")
 
-    render_customer_profile_page(detail, go_to_analysis_from_profile)
+    # Load run history for this customer
+    from ui.sse_client import fetch_customer_runs as _fetch_runs
+    profile_runs = _fetch_runs(cid)
+
+    def go_to_replay_from_profile(wf_id, customer_id):
+        lr = fetch_last_run(customer_id) or {}
+        # For non-latest runs, fetch the full state from the specific audit record
+        import httpx as _httpx
+        from collection_assistant.config import get_settings as _gs
+        import json as _json
+        try:
+            settings = _gs()
+            resp = _httpx.get(f"{settings.streamlit_api_url}/collections/{wf_id}/audit", timeout=8)
+            if resp.status_code == 200:
+                audit_data = resp.json()
+                full_state = audit_data.get("full_state") or {}
+                full_state["workflow_status"] = "completed"
+                full_state["agent_statuses"] = {
+                    "customer_profile": {"stage":1,"status":"completed","elapsed_ms":None,"error":None},
+                    "account_profile":  {"stage":1,"status":"completed","elapsed_ms":None,"error":None},
+                    "arrears_prediction":{"stage":2,"status":"completed","elapsed_ms":None,"error":None},
+                    "dispute":          {"stage":2,"status":"completed","elapsed_ms":None,"error":None},
+                    "nba":              {"stage":3,"status":"completed","elapsed_ms":None,"error":None},
+                    "audit":            {"stage":3,"status":"completed","elapsed_ms":None,"error":None},
+                }
+                go_to_replay(wf_id, full_state, customer_id)
+            else:
+                st.error(f"Could not load run {wf_id}")
+        except Exception as e:
+            st.error(f"Error loading run: {e}")
+
+    render_customer_profile_page(detail, go_to_analysis_from_profile,
+                                  runs=profile_runs, on_view_run=go_to_replay_from_profile)
