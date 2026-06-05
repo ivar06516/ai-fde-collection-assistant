@@ -383,11 +383,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   <!-- RESULTS PANEL -->
   <div class="results-panel" id="resultsPanel">
+
+    <!-- NBA + Complete banner always render HERE at the top -->
+    <div id="summarySection"></div>
+
+    <!-- Divider — only shown once summary has content -->
+    <div id="summaryDivider" style="display:none;border-top:2px dashed #E8E8E8;margin:0.8rem 0 1rem"></div>
+
     <div class="waiting-state" id="waitingMsg">
       <div class="big-icon">⚙</div>
       <div style="font-size:1rem;font-weight:600;margin-bottom:0.4rem">Initialising Pipeline</div>
-      <div style="font-size:0.85rem">Agents will populate below as they complete</div>
+      <div style="font-size:0.85rem">Agent outputs will appear below as each stage completes</div>
     </div>
+
+    <!-- Customer / Account / Arrears / Dispute detail cards build up here -->
     <div id="cards"></div>
   </div>
 
@@ -616,6 +625,68 @@ function nbaCard() {
   </div>`;
 }
 
+function auditCard() {
+  var rows = [
+    { agent:'Customer Profile',   stage:'Stage 1', status:'completed', ms:'3,800', fields:'Full Name, Age, Risk Segment, Hardship Flag, Channel, Tenure, Interactions' },
+    { agent:'Account Profile',    stage:'Stage 1', status:'completed', ms:'4,900', fields:'Product, Status, DPD, Balance, On-Time Rate, Missed (6m), Linked Accounts' },
+    { agent:'Arrears Prediction', stage:'Stage 2', status:'completed', ms:'4,900', fields:'Trajectory, Default Probability, DPD +30/60/90, Arrears Amount, Risk Factors' },
+    { agent:'Dispute Detection',  stage:'Stage 2', status:'completed', ms:'4,400', fields:'Active Disputes, Collection Hold, Hold Reason, Resolved Disputes' },
+    { agent:'Next Best Action',   stage:'Stage 3', status:'completed', ms:'6,300', fields:'Action, Channel, Rationale, Confidence, Urgency, Alternatives, Blocked By Dispute' },
+  ];
+  var rowsHtml = rows.map(function(r) {
+    return `<tr style="border-bottom:1px solid #F0F0F0">
+      <td style="padding:0.55rem 0.8rem;font-size:0.82rem;font-weight:600">${r.agent}</td>
+      <td style="padding:0.55rem 0.8rem"><span style="background:#F3E5F5;color:#4A148C;padding:2px 7px;border-radius:6px;font-size:0.7rem;font-weight:700">${r.stage}</span></td>
+      <td style="padding:0.55rem 0.8rem"><span style="background:#E8F5E9;color:#2E7D32;padding:2px 7px;border-radius:6px;font-size:0.7rem;font-weight:700">✅ ${r.status.toUpperCase()}</span></td>
+      <td style="padding:0.55rem 0.8rem;font-size:0.8rem;color:#137333;font-weight:600">${r.ms} ms</td>
+      <td style="padding:0.55rem 0.8rem;font-size:0.75rem;color:#666">${r.fields}</td>
+    </tr>`;
+  }).join('');
+  return `<div style="background:#fff;border:1px solid #E0E0E0;border-radius:10px;overflow:hidden;margin-top:1rem;animation:slideIn 0.4s ease">
+    <details>
+      <summary style="padding:0.9rem 1.2rem;cursor:pointer;display:flex;align-items:center;gap:0.7rem;list-style:none;border-bottom:1px solid #F0F0F0">
+        <span style="font-size:1rem">📋</span>
+        <span style="font-weight:700;font-size:0.92rem">Audit Trail</span>
+        <span style="background:#F3E5F5;color:#4A148C;padding:2px 8px;border-radius:8px;font-size:0.72rem;font-weight:700;margin-left:0.3rem">5 agents</span>
+        <span style="margin-left:auto;font-size:0.78rem;color:#888">Workflow: wf-43ae23ed7246</span>
+        <span style="font-size:0.78rem;color:#888;margin-left:1rem">Total: 23,097 ms</span>
+        <span style="font-size:0.75rem;color:#888;margin-left:0.5rem">▼ expand</span>
+      </summary>
+      <div style="padding:0 0 0.5rem">
+        <div style="display:flex;gap:2rem;padding:0.7rem 1.2rem;background:#FAFAFA;border-bottom:1px solid #F0F0F0;flex-wrap:wrap">
+          <div><span style="font-size:0.7rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px">Workflow ID</span>
+               <code style="font-size:0.78rem;color:#4A148C">wf-43ae23ed7246</code></div>
+          <div><span style="font-size:0.7rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px">Status</span>
+               <span style="background:#E8F5E9;color:#2E7D32;padding:2px 8px;border-radius:8px;font-size:0.72rem;font-weight:700">COMPLETED</span></div>
+          <div><span style="font-size:0.7rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px">Total Duration</span>
+               <span style="font-size:0.88rem;font-weight:700">23,097 ms</span></div>
+          <div><span style="font-size:0.7rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px">Customer</span>
+               <span style="font-size:0.88rem;font-weight:600">Michael Okonkwo (CUST-003)</span></div>
+          <div><span style="font-size:0.7rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px">Trigger</span>
+               <span style="font-size:0.88rem;font-weight:600">Routine Review</span></div>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#FAFAFA">
+              <th style="text-align:left;padding:0.5rem 0.8rem;font-size:0.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #F0F0F0">Agent</th>
+              <th style="text-align:left;padding:0.5rem 0.8rem;font-size:0.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #F0F0F0">Stage</th>
+              <th style="text-align:left;padding:0.5rem 0.8rem;font-size:0.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #F0F0F0">Status</th>
+              <th style="text-align:left;padding:0.5rem 0.8rem;font-size:0.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #F0F0F0">Elapsed</th>
+              <th style="text-align:left;padding:0.5rem 0.8rem;font-size:0.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #F0F0F0">Output Fields Populated</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="margin:0.8rem 1.2rem;background:#F3E5F5;border-radius:8px;padding:0.7rem 1rem">
+          <span style="color:#4A148C;font-weight:700;font-size:0.85rem">NBA Decision: </span>
+          <span style="font-weight:700;font-size:0.88rem">Offer Settlement</span>
+          <span style="color:#888;font-size:0.82rem;margin-left:0.8rem">Confidence: 87% · Channel: Email · Urgency: Critical · Blocked By Dispute: No</span>
+        </div>
+      </div>
+    </details>
+  </div>`;
+}
+
 function completeBanner(totalMs) {
   return `<div class="complete-banner">
     <span style="font-size:1.4rem">✅</span>
@@ -648,15 +719,21 @@ events.forEach(function(ev) {
         addCard(arrearsCard());
       } else if (ev.id === 'dis') {
         disputeCard();
+      } else if (ev.id === 'aud') {
+        // Audit trail appends at very bottom of detail cards
+        addCard(auditCard());
       } else if (ev.id === 'nba') {
-        addCard(nbaCard());
+        // NBA card: inject into summarySection (top of right panel, above detail cards)
+        document.getElementById('summarySection').insertAdjacentHTML('beforeend', nbaCard());
+        document.getElementById('summaryDivider').style.display = 'block';
         updateProgress(92, 'Building audit trail…');
       }
     }
     else if (ev.type === 'complete') {
       updateProgress(100, 'Complete');
       var totalMs = Date.now() - startTime;
-      document.getElementById('cards').insertAdjacentHTML('afterbegin', completeBanner(totalMs));
+      // Complete banner goes ABOVE the NBA card at the very top of summarySection
+      document.getElementById('summarySection').insertAdjacentHTML('afterbegin', completeBanner(totalMs));
       document.getElementById('timeline').style.display = 'block';
     }
   }, ev.t);
