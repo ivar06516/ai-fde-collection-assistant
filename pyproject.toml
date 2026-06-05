@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "collection-assistant"
 version = "0.1.0"
-description = "AI FDE Collection Assistant - Multi-Agent Architecture PoC"
+description = "AI Collection Assistant - Multi-Agent Architecture PoC"
 requires-python = ">=3.11"
 dependencies = [
     "langgraph>=0.2.0",

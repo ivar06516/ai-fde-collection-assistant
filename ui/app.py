@@ -1,4 +1,4 @@
-﻿"""AI FDE Collection Assistant - 3-page Streamlit application.
+﻿"""AI Collection Assistant - 3-page Streamlit application.
 
 Page 1: Dashboard  — portfolio view (customer list, KPIs, filters)
 Page 2: Analysis   — pipeline execution + progressive results + audit trail
@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import streamlit as st
 
 st.set_page_config(
-    page_title="AI FDE Collection Assistant",
+    page_title="AI Collection Assistant",
     page_icon="🏦",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -85,9 +85,7 @@ def _render_header():
     st.markdown(
         f'<div style="background:#1A1A1A;padding:0.6rem 1.5rem;border-radius:8px;'
         f'margin-bottom:0.8rem;display:flex;align-items:center;gap:1.2rem">'
-        f'<span style="color:#A100FF;font-size:1.15rem;font-weight:800;letter-spacing:-0.5px">Accenture</span>'
-        f'<span style="color:#444;font-size:1rem">|</span>'
-        f'<span style="color:#888;font-size:0.85rem">AI FDE Collection Assistant</span>'
+        f'<span style="color:#A100FF;font-size:1.15rem;font-weight:800;letter-spacing:-0.5px">AI Collection Assistant</span>'
         f'<span style="color:#444;margin:0 0.2rem">|</span>'
         f'<nav style="display:flex;align-items:center">{crumb_html}</nav>'
         f'</div>',
@@ -118,8 +116,8 @@ with st.sidebar:
     # ── App Identity ────────────────────────────────────────────────────────
     st.markdown(
         '<div style="padding:0.5rem 0 0.8rem">'
-        '<div style="color:#A100FF;font-size:1.1rem;font-weight:800;letter-spacing:-0.5px">Accenture</div>'
-        '<div style="color:#888;font-size:0.75rem;margin-top:1px">AI FDE Collection Assistant</div>'
+        '<div style="color:#A100FF;font-size:1.1rem;font-weight:800;letter-spacing:-0.5px">AI Collection Assistant</div>'
+        '<div style="color:#888;font-size:0.72rem;margin-top:1px">Multi-Agent Architecture PoC</div>'
         '</div>',
         unsafe_allow_html=True,
     )

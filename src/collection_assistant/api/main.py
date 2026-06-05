@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="AI FDE Collection Assistant API",
+    title="AI Collection Assistant API",
     description="Multi-agent collection pipeline - Forward Deployed Engineer PoC",
     version="0.1.0",
     lifespan=lifespan,

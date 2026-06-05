@@ -1,1 +1,1 @@
-"""AI FDE Collection Assistant."""
+"""AI Collection Assistant."""

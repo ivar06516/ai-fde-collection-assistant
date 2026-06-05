@@ -1,4 +1,4 @@
-﻿"""Customer Portfolio Dashboard — Screen 0 of the FDE Collection Assistant."""
+﻿"""Customer Portfolio Dashboard — Screen 0 of the AI Collection Assistant."""
 import streamlit as st
 
 RISK_STYLE = {
