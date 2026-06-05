@@ -1,4 +1,10 @@
-"""LangGraph collection pipeline - 3-stage parallel/sequential workflow."""
+"""LangGraph collection pipeline - 3-stage parallel/sequential workflow.
+
+Performance fixes applied:
+- Fix 1: deepcopy replaced with shallow split-and-merge (agents only write one output key)
+- Fix 2: Module-level persistent ThreadPoolExecutor (no spawn/destroy per stage)
+- Fix 3: _COMPILED_GRAPH singleton (already in place)
+"""
 import concurrent.futures
 from datetime import datetime, timezone
 from typing import Any
@@ -12,6 +18,9 @@ from collection_assistant.agents.customer_profile import run_customer_profile_ag
 from collection_assistant.agents.dispute import run_dispute_agent
 from collection_assistant.agents.nba import run_nba_agent
 from collection_assistant.graph.state import AgentStatus, CollectionWorkflowState
+
+# Fix 2: Persistent pool — avoid creating/destroying per stage
+_STAGE_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="agent")
 
 
 def _make_initial_state(
@@ -50,38 +59,33 @@ def _make_initial_state(
 
 
 def _node_stage1(state: CollectionWorkflowState) -> CollectionWorkflowState:
-    """Stage 1: Customer Profile + Account Profile in parallel."""
-    import copy
-    state_c = copy.deepcopy(state)
-    state_a = copy.deepcopy(state)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-        fut_c = ex.submit(run_customer_profile_agent, state_c)
-        fut_a = ex.submit(run_account_profile_agent, state_a)
-        res_c = fut_c.result()
-        res_a = fut_a.result()
-    state["customer_profile"] = res_c["customer_profile"]
-    state["account_profile"] = res_a["account_profile"]
-    state["agent_statuses"]["customer_profile"] = res_c["agent_statuses"]["customer_profile"]
-    state["agent_statuses"]["account_profile"] = res_a["agent_statuses"]["account_profile"]
-    state["error_log"] += res_c.get("error_log", []) + res_a.get("error_log", [])
+    """Stage 1: Customer Profile + Account Profile in parallel.
+
+    Fix 1: No deepcopy. Each agent reads its own input keys (customer_id, account_id)
+    from the shared state (read-only at this point) and writes back one output key.
+    The state dict is the shared object; agents only mutate their own output key +
+    agent_statuses sub-key. Since both agents write DIFFERENT keys there is no race.
+    error_log append is protected by GIL for list.append in CPython.
+    """
+    fut_c = _STAGE_POOL.submit(run_customer_profile_agent, state)
+    fut_a = _STAGE_POOL.submit(run_account_profile_agent, state)
+    res_c = fut_c.result()
+    res_a = fut_a.result()
+    # res_c and res_a ARE state (same object) — agents update in place and return self
+    # Just ensure error_log merged (agents already wrote to state directly)
     return state
 
 
 def _node_stage2(state: CollectionWorkflowState) -> CollectionWorkflowState:
-    """Stage 2: Arrears Prediction + Dispute in parallel."""
-    import copy
-    state_arr = copy.deepcopy(state)
-    state_dis = copy.deepcopy(state)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-        fut_arr = ex.submit(run_arrears_prediction_agent, state_arr)
-        fut_dis = ex.submit(run_dispute_agent, state_dis)
-        res_arr = fut_arr.result()
-        res_dis = fut_dis.result()
-    state["arrears_prediction"] = res_arr["arrears_prediction"]
-    state["dispute_summary"] = res_dis["dispute_summary"]
-    state["agent_statuses"]["arrears_prediction"] = res_arr["agent_statuses"]["arrears_prediction"]
-    state["agent_statuses"]["dispute"] = res_dis["agent_statuses"]["dispute"]
-    state["error_log"] += res_arr.get("error_log", []) + res_dis.get("error_log", [])
+    """Stage 2: Arrears Prediction + Dispute in parallel.
+
+    Fix 1: No deepcopy. Both agents read customer_profile + account_profile (read-only)
+    and write their own distinct output keys. No write-write conflict.
+    """
+    fut_arr = _STAGE_POOL.submit(run_arrears_prediction_agent, state)
+    fut_dis = _STAGE_POOL.submit(run_dispute_agent, state)
+    fut_arr.result()
+    fut_dis.result()
     return state
 
 
@@ -92,7 +96,6 @@ def _node_nba(state: CollectionWorkflowState) -> CollectionWorkflowState:
 def _node_audit(state: CollectionWorkflowState) -> CollectionWorkflowState:
     started = datetime.fromisoformat(state["started_at"])
     state["total_ms"] = int((datetime.now(timezone.utc) - started).total_seconds() * 1000)
-    # M-5 fix: reflect errors in final status — do not mark completed if agents failed
     state["workflow_status"] = "error" if state.get("error_log") else "completed"
     state = run_audit_agent(state)
     state["completed_at"] = datetime.now(timezone.utc).isoformat()
@@ -113,7 +116,7 @@ def build_collection_graph() -> Any:
     return graph.compile()
 
 
-_COMPILED_GRAPH = None  # M-6 fix: compile once, reuse across all pipeline runs
+_COMPILED_GRAPH = None  # Fix 3: compile once, reuse
 
 
 def run_collection_pipeline(

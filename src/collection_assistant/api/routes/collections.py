@@ -114,8 +114,8 @@ async def stream_workflow(workflow_id: str) -> StreamingResponse:
                 if event["type"] == "workflow_error":
                     event_bus.cleanup(workflow_id)
                     return
-            await asyncio.sleep(0.2)
-            waited += 0.2
+            await asyncio.sleep(0.5)  # Perf Fix 6: 2 polls/sec instead of 5
+            waited += 0.5
         timeout_event = json.dumps({"type": "timeout", "data": {}})
         yield f"data: {timeout_event}\n\n"
 

@@ -2,12 +2,9 @@
 import json
 from datetime import datetime, timezone
 
-from langchain_core.messages import HumanMessage, SystemMessage
-
 from collection_assistant.config import get_settings
 from collection_assistant.graph.state import CollectionWorkflowState
 from collection_assistant import event_bus
-from collection_assistant.llm.client_factory import get_llm
 from collection_assistant.tools.arrears_tools import (
     analyse_payment_pattern,
     calculate_arrears_trajectory,
@@ -85,37 +82,25 @@ def run_arrears_prediction_agent(state: CollectionWorkflowState) -> CollectionWo
         forecast = estimate_future_arrears(dpd, trajectory, outstanding_balance,
                                            months_available=months_available)
 
-        data_prompt = f"""Account and customer data for arrears prediction:
-
-CURRENT DPD: {dpd}
-ARREARS BAND: {_get_arrears_band(dpd)}
-OUTSTANDING BALANCE: ${outstanding_balance:,.2f}
-MONTHS OF PAYMENT HISTORY AVAILABLE: {months_available}
-PAYMENT PATTERN ANALYSIS: {json.dumps(pattern, indent=2)}
-PRE-CALCULATED VALUES (copy these exactly into your JSON output):
-  arrears_trajectory = "{trajectory}"
-  default_probability = {default_prob}
-  predicted_dpd_30 = {forecast["predicted_dpd_30"]}
-  predicted_dpd_60 = {forecast["predicted_dpd_60"]}
-  predicted_dpd_90 = {forecast["predicted_dpd_90"]}
-  predicted_arrears_amount = {forecast["predicted_arrears_amount"]}
-  confidence_score = {forecast["confidence_score"]}
-  contributing_risk_factors = {json.dumps(risk_factors)}
-RISK SEGMENT: {risk_segment}
-HARDSHIP FLAG: {hardship_flag}
-EMPLOYMENT: {employment_status}"""
-
-        settings = get_settings()
-        llm = get_llm("arrears_prediction", settings)
-        response = llm.invoke([
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=data_prompt),
-        ])
-
-        from collection_assistant.agents import parse_llm_json
-        content = parse_llm_json(response.content)
-
-        prediction = json.loads(content)
+        # Perf Fix 3: build prediction dict directly from deterministic tools
+        # No LLM needed — all values are pre-calculated; LLM was just echoing them back
+        prediction = {
+            "current_arrears_band": _get_arrears_band(dpd),
+            "arrears_trajectory": trajectory,
+            "predicted_dpd_30": forecast["predicted_dpd_30"],
+            "predicted_dpd_60": forecast["predicted_dpd_60"],
+            "predicted_dpd_90": forecast["predicted_dpd_90"],
+            "default_probability": default_prob,
+            "predicted_arrears_amount": forecast["predicted_arrears_amount"],
+            "contributing_risk_factors": risk_factors,
+            "confidence_score": forecast["confidence_score"],
+            "summary": (
+                f"Arrears trajectory is {trajectory} with a {default_prob:.0%} default probability. "
+                f"Current DPD is {dpd}. Predicted DPD at 90 days: {forecast['predicted_dpd_90']}. "
+                f"Confidence: {forecast['confidence_score']:.0%}. "
+                f"Top risk factor: {risk_factors[0]['name'] if risk_factors else 'None'}."
+            ),
+        }
 
         elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
         state["arrears_prediction"] = prediction

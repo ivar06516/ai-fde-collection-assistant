@@ -8,12 +8,7 @@ from collection_assistant.config import get_settings
 from collection_assistant.graph.state import CollectionWorkflowState
 from collection_assistant import event_bus
 from collection_assistant.llm.client_factory import get_llm
-from collection_assistant.tools.customer_tools import (
-    detect_hardship_signals,
-    get_contact_preferences,
-    get_customer_demographics,
-    get_interaction_history_summary,
-)
+from collection_assistant.tools.customer_tools import get_all_customer_data
 
 SYSTEM_PROMPT = """You are the Customer Profile Agent for an AI-powered debt collection assistant.
 Your job is to build a comprehensive 360-degree customer profile from the provided data.
@@ -54,21 +49,24 @@ def run_customer_profile_agent(state: CollectionWorkflowState) -> CollectionWork
     event_bus.emit(state["workflow_id"], "agent_update", {"agent": "customer_profile", "stage": 1, "status": "running", "elapsed_ms": None, "error": None})
 
     try:
-        demographics = get_customer_demographics(customer_id)
-        prefs = get_contact_preferences(customer_id)
-        interactions = get_interaction_history_summary(customer_id)
-        hardship = detect_hardship_signals(customer_id)
+        # Perf Fix 4: single DB session for all customer data
+        d = get_all_customer_data(customer_id)
 
         data_prompt = f"""Customer data to analyse:
 
-DEMOGRAPHICS: {json.dumps(demographics, indent=2)}
-CONTACT PREFERENCES: {json.dumps(prefs, indent=2)}
-INTERACTION HISTORY: {json.dumps(interactions, indent=2)}
-HARDSHIP SIGNALS: {json.dumps(hardship, indent=2)}
-IMPORTANT - use exactly these DB-sourced values in your JSON output (do not change them):
-  risk_segment = "{demographics.get('risk_segment', 'medium')}" <- copy this exactly
-  hardship_flag = {demographics.get('hardship_flag', False)}
-  hardship_reason = {json.dumps(demographics.get('hardship_reason'))}"""
+NAME: {d["full_name"]}  AGE: {d["age"]}  EMPLOYMENT: {d["employment_status"]}  INCOME: ${d["annual_income"]:,.0f}
+CITY: {d["city"]}, {d["state"]}  TENURE: {d["relationship_tenure_years"]} years
+PRIOR INTERACTIONS: {d["prior_collection_interactions"]}  LAST OUTCOME: {d["last_outcome"]}
+HARDSHIP SIGNALS: {d["behavioural_signals"]}
+
+IMPORTANT - copy these DB values exactly:
+  risk_segment = "{d["risk_segment"]}"
+  hardship_flag = {d["hardship_flag"]}
+  hardship_reason = {json.dumps(d["hardship_reason"])}
+  preferred_channel = "{d["preferred_channel"]}"
+  preferred_time = "{d["preferred_time"]}"
+  relationship_tenure_years = {d["relationship_tenure_years"]}
+  prior_collection_interactions = {d["prior_collection_interactions"]}"""
 
         settings = get_settings()
         llm = get_llm("customer_profile", settings)
