@@ -369,9 +369,6 @@ elif st.session_state.page == "analysis":
             st.rerun()
         except Exception as e:
             st.error(f"Failed to start pipeline: {e}")
-            if st.button("← Back to Dashboard"):
-                st.session_state.page = "dashboard"
-                st.rerun()
         st.stop()
 
     wf_id = st.session_state.workflow_id
@@ -379,18 +376,12 @@ elif st.session_state.page == "analysis":
     # Customer banner (full width)
     _customer_banner(row, wf_id or "")
 
-    # Action row — sits flush under the banner, no gap
-    a1, a2, a3 = st.columns([2, 4, 1])
-    with a1:
-        if st.button("👤 View Customer Profile", key="view_profile_banner", use_container_width=True):
-            st.session_state.profile_customer_id = row.get("customer_id")
-            st.session_state.profile_detail = None
-            st.session_state.page = "profile"
-            st.rerun()
-    with a3:
-        if st.button("← Dashboard", use_container_width=True):
-            st.session_state.page = "dashboard"
-            st.rerun()
+    # Profile link — under the customer banner
+    if st.button("👤 View Customer Profile", key="view_profile_banner"):
+        st.session_state.profile_customer_id = row.get("customer_id")
+        st.session_state.profile_detail = None
+        st.session_state.page = "profile"
+        st.rerun()
 
     # State: live pipeline polls API; replay loads stored state from session
     if st.session_state.get("workflow_mode") == "replay":
@@ -515,13 +506,6 @@ elif st.session_state.page == "analysis":
 # PAGE 3 — CUSTOMER PROFILE
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "profile":
-    # Back button (breadcrumb already in header)
-    _, bc2 = st.columns([5, 1])
-    with bc2:
-        if st.button("← Dashboard"):
-            st.session_state.page = "dashboard"
-            st.rerun()
-
     # Load customer detail
     cid = st.session_state.profile_customer_id
     if not st.session_state.profile_detail:
