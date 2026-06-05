@@ -135,6 +135,18 @@ def _customer_banner(row: dict, wf_id: str = ""):
     )
 
 
+# ── Module-level navigation helpers (accessible from all page blocks) ──────────
+def go_to_replay(workflow_id: str, full_state: dict, customer_id: str):
+    """Load a past run from DB into the analysis screen without running the pipeline."""
+    row = next((r for r in (st.session_state.portfolio or []) if r["customer_id"] == customer_id), {})
+    st.session_state.workflow_id = workflow_id
+    st.session_state.workflow_state = full_state
+    st.session_state.pipeline_row = row
+    st.session_state.workflow_mode = "replay"
+    st.session_state.page = "analysis"
+    st.rerun()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 — DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
@@ -159,6 +171,7 @@ if st.session_state.page == "dashboard":
                 st.session_state.workflow_id = wf_id
                 st.session_state.pipeline_row = row
                 st.session_state.dash_trigger = trigger_context
+                st.session_state.workflow_mode = "live"
                 st.session_state.page = "analysis"
                 st.rerun()
             except Exception as e:
@@ -166,18 +179,8 @@ if st.session_state.page == "dashboard":
 
     def go_to_profile(customer_id):
         st.session_state.profile_customer_id = customer_id
-        st.session_state.profile_detail = None   # force reload
+        st.session_state.profile_detail = None
         st.session_state.page = "profile"
-        st.rerun()
-
-    def go_to_replay(workflow_id: str, full_state: dict, customer_id: str):
-        """Load a past run from DB into the analysis screen without running the pipeline."""
-        row = next((r for r in st.session_state.portfolio if r["customer_id"] == customer_id), {})
-        st.session_state.workflow_id = workflow_id
-        st.session_state.workflow_state = full_state
-        st.session_state.pipeline_row = row
-        st.session_state.workflow_mode = "replay"
-        st.session_state.page = "analysis"
         st.rerun()
 
 
