@@ -355,8 +355,15 @@ elif st.session_state.page == "analysis":
             st.session_state.page = "dashboard"
             st.rerun()
 
-    # Customer banner
+    # Customer banner with View Profile link under the name
     _customer_banner(row, wf_id)
+    ban_l, _ = st.columns([1, 5])
+    with ban_l:
+        if st.button("👤 View Customer Profile", key="view_profile_banner"):
+            st.session_state.profile_customer_id = row.get("customer_id")
+            st.session_state.profile_detail = None
+            st.session_state.page = "profile"
+            st.rerun()
 
     # State: live pipeline polls API; replay loads stored state from session
     if st.session_state.get("workflow_mode") == "replay":
@@ -394,13 +401,6 @@ elif st.session_state.page == "analysis":
 
     with col_left:
         render_execution_panel(agent_statuses)
-        # "View Customer Profile" link
-        st.markdown("")
-        if st.button("👤 View Full Customer Profile", use_container_width=True):
-            st.session_state.profile_customer_id = row.get("customer_id")
-            st.session_state.profile_detail = None
-            st.session_state.page = "profile"
-            st.rerun()
 
     with col_right:
         nba_done  = (agent_statuses.get("nba",{}).get("status")=="completed" and state.get("nba_recommendation"))
