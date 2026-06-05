@@ -106,6 +106,8 @@ for k, v in [
     ("dash_trigger","routine_review"),
     ("dash_selected",None),
     ("workflow_mode","live"),   # live | replay
+    ("pipeline_customer_id", None),
+    ("pipeline_account_id",  None),
 ]:
     if k not in st.session_state:
         st.session_state[k] = v
@@ -298,18 +300,17 @@ if st.session_state.page == "dashboard":
                 st.stop()
 
     def go_to_analysis(customer_id, account_id, trigger_context):
-        with st.spinner("Starting analysis pipeline..."):
-            try:
-                wf_id = trigger_pipeline(customer_id, account_id, trigger_context)
-                row = next((r for r in st.session_state.portfolio if r["customer_id"]==customer_id), {})
-                st.session_state.workflow_id = wf_id
-                st.session_state.pipeline_row = row
-                st.session_state.dash_trigger = trigger_context
-                st.session_state.workflow_mode = "live"
-                st.session_state.page = "analysis"
-                st.rerun()
-            except Exception as e:
-                st.error(f"Failed to start pipeline: {e}")
+        # Navigate FIRST — pipeline starts from the analysis page on first render
+        row = next((r for r in st.session_state.portfolio if r["customer_id"] == customer_id), {})
+        st.session_state.workflow_id = None           # signals "needs to start"
+        st.session_state.pipeline_customer_id = customer_id
+        st.session_state.pipeline_account_id = account_id
+        st.session_state.pipeline_row = row
+        st.session_state.dash_trigger = trigger_context
+        st.session_state.workflow_mode = "live"
+        st.session_state.workflow_state = None
+        st.session_state.page = "analysis"
+        st.rerun()
 
     def go_to_profile(customer_id):
         st.session_state.profile_customer_id = customer_id
@@ -343,11 +344,40 @@ if st.session_state.page == "dashboard":
 # PAGE 2 — ANALYSIS
 # ══════════════════════════════════════════════════════════════════════════════
 elif st.session_state.page == "analysis":
-    wf_id   = st.session_state.workflow_id
-    row     = st.session_state.get("pipeline_row") or {}
+    row = st.session_state.get("pipeline_row") or {}
+
+    # ── Start pipeline on first render (workflow_id is None = fresh navigate) ──
+    if st.session_state.workflow_id is None and st.session_state.workflow_mode == "live":
+        cust_id = st.session_state.get("pipeline_customer_id")
+        acc_id  = st.session_state.get("pipeline_account_id")
+        trigger = st.session_state.get("dash_trigger", "routine_review")
+
+        # Show banner immediately so user sees the page
+        _customer_banner(row, "Starting…")
+        st.markdown(
+            '<div style="background:#F3E5F5;border-radius:8px;padding:0.6rem 1rem;'
+            'display:flex;align-items:center;gap:0.8rem;margin-bottom:0.6rem">'
+            '<span style="font-size:1.2rem">⚙</span>'
+            '<span style="color:#A100FF;font-weight:600">Connecting to pipeline…</span>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+        try:
+            wf_id = trigger_pipeline(cust_id, acc_id, trigger)
+            st.session_state.workflow_id = wf_id
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to start pipeline: {e}")
+            if st.button("← Back to Dashboard"):
+                st.session_state.page = "dashboard"
+                st.rerun()
+        st.stop()
+
+    wf_id = st.session_state.workflow_id
 
     # Customer banner (full width)
-    _customer_banner(row, wf_id)
+    _customer_banner(row, wf_id or "")
 
     # Action row — sits flush under the banner, no gap
     a1, a2, a3 = st.columns([2, 4, 1])
@@ -506,17 +536,17 @@ elif st.session_state.page == "profile":
     detail = st.session_state.profile_detail
 
     def go_to_analysis_from_profile(customer_id, account_id, trigger_context):
-        with st.spinner("Starting analysis..."):
-            try:
-                wf_id = trigger_pipeline(customer_id, account_id, trigger_context)
-                row = next((r for r in (st.session_state.portfolio or []) if r["customer_id"]==customer_id), {})
-                st.session_state.workflow_id = wf_id
-                st.session_state.pipeline_row = row
-                st.session_state.dash_trigger = trigger_context
-                st.session_state.page = "analysis"
-                st.rerun()
-            except Exception as e:
-                st.error(f"Failed to start pipeline: {e}")
+        # Navigate immediately — pipeline starts on first render of analysis page
+        row = next((r for r in (st.session_state.portfolio or []) if r["customer_id"] == customer_id), {})
+        st.session_state.workflow_id = None
+        st.session_state.pipeline_customer_id = customer_id
+        st.session_state.pipeline_account_id  = account_id
+        st.session_state.pipeline_row = row
+        st.session_state.dash_trigger = trigger_context
+        st.session_state.workflow_mode = "live"
+        st.session_state.workflow_state = None
+        st.session_state.page = "analysis"
+        st.rerun()
 
     # Load run history for this customer
     from ui.sse_client import fetch_customer_runs as _fetch_runs
