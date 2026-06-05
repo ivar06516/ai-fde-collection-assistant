@@ -192,6 +192,37 @@ with st.sidebar:
     st.markdown('<div style="border-top:1px solid #333;margin:0.8rem 0"></div>',
                 unsafe_allow_html=True)
 
+    # ── Demo Scenarios (UC-009) ─────────────────────────────────────────────
+    st.markdown(
+        '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
+        'letter-spacing:0.06em;margin-bottom:0.4rem">Demo Scenarios</div>',
+        unsafe_allow_html=True,
+    )
+    DEMO_SCENARIOS = [
+        ("⬜ No Action",     "CUST-001", "ACC-001", "routine_review",   "Arjun Sharma — DPD=0, low risk"),
+        ("🚫 Dispute Hold",  "CUST-002", "ACC-002", "missed_payment",   "Priya Mehta — hold active"),
+        ("⚠ Critical",       "CUST-003", "ACC-003", "routine_review",   "Rahul Singh — DPD=92, critical"),
+        ("💼 Hardship",      "CUST-004", "ACC-004", "hardship_claim",   "Kavita Patel — unemployment"),
+    ]
+    for label, cid, aid, trigger, tooltip in DEMO_SCENARIOS:
+        if st.button(label, use_container_width=True, help=tooltip, key=f"demo_{cid}"):
+            if st.session_state.page == "dashboard" and st.session_state.portfolio:
+                row = next((r for r in st.session_state.portfolio if r["customer_id"] == cid), {})
+                st.session_state.workflow_id = None
+                st.session_state.pipeline_customer_id = cid
+                st.session_state.pipeline_account_id  = aid
+                st.session_state.pipeline_row  = row
+                st.session_state.dash_trigger  = trigger
+                st.session_state.workflow_mode = "live"
+                st.session_state.workflow_state = None
+                st.session_state.page = "analysis"
+                st.rerun()
+            else:
+                st.info("Load Dashboard first to run demo scenarios.")
+
+    st.markdown('<div style="border-top:1px solid #333;margin:0.8rem 0"></div>',
+                unsafe_allow_html=True)
+
     # ── Data Management ─────────────────────────────────────────────────────
     st.markdown(
         '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
