@@ -50,7 +50,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
     b1, b2 = st.columns([5, 2])
     with b1:
         st.markdown(
-            f'<div style="font-size:0.78rem;color:#888;margin-bottom:0.3rem">'
+            f'<div style="font-size:0.78rem;color:#616161;margin-bottom:0.3rem">'
             f'<span style="cursor:pointer;color:#A100FF">Dashboard</span>'
             f' › Customer Profile</div>',
             unsafe_allow_html=True,
@@ -64,10 +64,10 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
             f'<span style="{rs};padding:3px 12px;border-radius:10px;font-size:0.75rem;font-weight:700">'
             f'{risk.upper()} RISK</span>'
             + (f'<span style="background:#FCE8E6;color:#C62828;padding:3px 10px;border-radius:10px;'
-               f'font-size:0.72rem;font-weight:700">⚠ HARDSHIP: {detail.get("hardship_reason","").upper()}</span>'
+               f'font-size:0.75rem;font-weight:700">⚠ HARDSHIP: {detail.get("hardship_reason","").upper()}</span>'
                if detail.get("hardship_flag") else "")
             + f'</div>'
-            f'<div style="font-size:0.78rem;color:#888;margin-top:3px">'
+            f'<div style="font-size:0.78rem;color:#616161;margin-top:3px">'
             f'{detail.get("customer_id","—")} · Member since {detail.get("relationship_since","—")} '
             f'({detail.get("relationship_tenure_years",0):.1f} years)</div>',
             unsafe_allow_html=True,
@@ -138,12 +138,12 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
                 with ac2:
                     st.markdown(
                         f'<div style="font-size:2rem;font-weight:800;color:{dpd_c}">{dpd}</div>'
-                        f'<div style="font-size:0.75rem;color:#888">Days Past Due</div>',
+                        f'<div style="font-size:0.75rem;color:#616161">Days Past Due</div>',
                         unsafe_allow_html=True)
                 with ac3:
                     st.markdown(
                         f'<div style="font-size:1.6rem;font-weight:800;color:{otr_c}">{otr:.0%}</div>'
-                        f'<div style="font-size:0.75rem;color:#888">On-Time Payment Rate</div>',
+                        f'<div style="font-size:0.75rem;color:#616161">On-Time Payment Rate</div>',
                         unsafe_allow_html=True)
                     missed = acc.get("missed_last_6m", 0)
                     if missed:
@@ -204,20 +204,20 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
             with cols[0]:
                 _st.markdown(
                     f'<div style="font-weight:700;color:{a_color}">{action.replace("_"," ").title()}</div>'
-                    f'<div style="font-size:0.72rem;color:#888">{trigger}</div>',
+                    f'<div style="font-size:0.75rem;color:#616161">{trigger}</div>',
                     unsafe_allow_html=True)
             with cols[1]:
                 _st.markdown(
-                    f'<div style="font-size:0.85rem;color:#888">{run_at}</div>',
+                    f'<div style="font-size:0.85rem;color:#616161">{run_at}</div>',
                     unsafe_allow_html=True)
             with cols[2]:
                 _st.markdown(
                     f'<div style="font-weight:700;color:{a_color}">{conf:.0%}</div>'
-                    f'<div style="font-size:0.7rem;color:#888">confidence</div>',
+                    f'<div style="font-size:0.75rem;color:#616161">confidence</div>',
                     unsafe_allow_html=True)
             with cols[3]:
                 _st.markdown(
-                    f'<div style="font-size:0.82rem;color:#888">{ms/1000:.1f}s</div>',
+                    f'<div style="font-size:0.82rem;color:#616161">{ms/1000:.1f}s</div>',
                     unsafe_allow_html=True)
             with cols[4]:
                 if _st.button("View", key=f"run_view_{wf_id}", use_container_width=True):
@@ -237,12 +237,12 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
             st.markdown(
                 f'<div style="display:flex;gap:0.8rem;align-items:flex-start;'
                 f'padding:0.5rem 0;border-bottom:1px solid #F5F5F5">'
-                f'<div style="font-size:0.72rem;color:#888;min-width:120px">'
+                f'<div style="font-size:0.75rem;color:#616161;min-width:120px">'
                 f'{str(ix.get("date",""))[:10]}</div>'
                 f'<div style="font-size:0.78rem;font-weight:600;min-width:60px">'
                 f'{(ix.get("type","") or "").title()}</div>'
                 f'<div style="flex:1;font-size:0.78rem">{ix.get("notes","") or ""}</div>'
-                f'<div style="font-size:0.72rem;font-weight:700;color:{oc}">{outcome.replace("_"," ").title()}</div>'
+                f'<div style="font-size:0.75rem;font-weight:700;color:{oc}">{outcome.replace("_"," ").title()}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )

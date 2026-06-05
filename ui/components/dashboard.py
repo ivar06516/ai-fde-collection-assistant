@@ -32,16 +32,16 @@ DPD_COLOR = {
 
 def _badge(text, style):
     return (f'<span style="{style};padding:2px 8px;border-radius:9px;'
-            f'font-size:0.72rem;font-weight:700;white-space:nowrap">{text}</span>')
+            f'font-size:0.75rem;font-weight:700;white-space:nowrap">{text}</span>')
 
 
 def _kpi(label, value, sub, color):
     return (f'<div style="background:#fff;border:1px solid #E0E0E0;border-radius:10px;'
             f'padding:1rem 1.2rem;border-top:3px solid {color}">'
-            f'<div style="font-size:0.72rem;color:#888;font-weight:600;text-transform:uppercase;'
+            f'<div style="font-size:0.75rem;color:#616161;font-weight:600;text-transform:uppercase;'
             f'letter-spacing:0.05em;margin-bottom:0.4rem">{label}</div>'
             f'<div style="font-size:2rem;font-weight:800;color:{color};line-height:1">{value}</div>'
-            f'<div style="font-size:0.75rem;color:#888;margin-top:0.3rem">{sub}</div></div>')
+            f'<div style="font-size:0.75rem;color:#616161;margin-top:0.3rem">{sub}</div></div>')
 
 
 def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_run=None):
@@ -69,28 +69,40 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
 
     st.markdown("")
 
-    # Filter Row
+    # Filter Row with persistent labels
+    def _filter_label(text):
+        st.markdown(
+            f'<div style="font-size:0.75rem;font-weight:600;color:#616161;'
+            f'text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px">{text}</div>',
+            unsafe_allow_html=True)
+
     fc1, fc2, fc3, fc4, fc5, fc6 = st.columns([3, 2, 2, 2, 2, 2])
     with fc1:
-        search = st.text_input("Search", placeholder="Name, Customer ID, Account…",
+        _filter_label("Search")
+        search = st.text_input("Search", placeholder="Name, ID, account…",
                                label_visibility="collapsed", key="dash_search")
     with fc2:
+        _filter_label("Risk Segment")
         risk_filter = st.selectbox("Risk", ["All Risk", "low", "medium", "high", "hardship"],
                                     format_func=lambda x: x if x == "All Risk" else x.title(),
                                     label_visibility="collapsed", key="dash_risk")
     with fc3:
+        _filter_label("Account Status")
         status_filter = st.selectbox("Status", ["All Status", "current", "delinquent", "legal"],
                                       format_func=lambda x: x if x == "All Status" else x.title(),
                                       label_visibility="collapsed", key="dash_status")
     with fc4:
+        _filter_label("Product Type")
         product_filter = st.selectbox("Product",
                                        ["All Products"] + list(PRODUCT_LABELS.keys()),
                                        format_func=lambda x: x if x == "All Products" else PRODUCT_LABELS.get(x, x),
                                        label_visibility="collapsed", key="dash_product")
     with fc5:
+        _filter_label("Hold Status")
         hold_filter = st.selectbox("Hold", ["All", "Hold Active", "No Hold"],
                                     label_visibility="collapsed", key="dash_hold")
     with fc6:
+        _filter_label("Days Past Due")
         dpd_filter = st.selectbox("DPD",
                                    ["All DPD", "0 (Current)", "1-30", "31-60", "61-90", "90+"],
                                    label_visibility="collapsed", key="dash_dpd")
@@ -125,7 +137,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
     with h1:
         st.markdown(
             f"**Customer List** &nbsp;"
-            f"<span style='color:#888;font-size:0.85rem'>{len(filtered)} of {total} customers</span>",
+            f"<span style='color:#616161;font-size:0.85rem'>{len(filtered)} of {total} customers</span>",
             unsafe_allow_html=True)
     with h2:
         sel = st.session_state.get("dash_selected")
@@ -135,8 +147,14 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 on_run_analysis(sel["customer_id"], sel["account_id"],
                                 st.session_state.get("dash_trigger", "routine_review"))
 
+    if not filtered and total == 0:
+        st.info(
+            "No customers loaded yet. Click **🌱 Reset & Reseed Database** in the sidebar "
+            "to load 100 demo customers, then refresh the portfolio."
+        )
+        return
     if not filtered:
-        st.info("No customers match the current filters.")
+        st.info("No customers match the current filters. Try clearing one or more filters.")
         return
 
     # ── Pagination ────────────────────────────────────────────────────────────
@@ -162,7 +180,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
     pg1, pg2 = st.columns([4, 3])
     with pg1:
         st.markdown(
-            f'<div style="font-size:0.82rem;color:#888;padding-top:6px">'
+            f'<div style="font-size:0.82rem;color:#616161;padding-top:6px">'
             f'Showing <b>{start_idx+1}–{end_idx}</b> of <b>{total_filtered}</b> customers'
             + (f' (page {page} of {total_pages})' if total_pages > 1 else '') +
             f'</div>',
@@ -205,7 +223,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                                            "DPD", "Outstanding", "Hold", "Last Run", "Actions"]):
         with col_widget:
             st.markdown(
-                f'<div style="font-size:0.72rem;font-weight:700;color:#888;'
+                f'<div style="font-size:0.75rem;font-weight:700;color:#616161;'
                 f'text-transform:uppercase;letter-spacing:0.04em;'
                 f'padding-bottom:4px;border-bottom:2px solid #E0E0E0">{label}</div>',
                 unsafe_allow_html=True)
@@ -230,12 +248,12 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 2])
         with c1:
             bg = "#F3E5F5" if is_sel else "transparent"
-            hp_html = (f'<div style="font-size:0.7rem;color:#4527A0">Hardship: {hreason or "Active"}</div>'
+            hp_html = (f'<div style="font-size:0.75rem;color:#4527A0">Hardship: {hreason or "Active"}</div>'
                        if hship else "")
             st.markdown(
                 f'<div style="background:{bg};border-radius:5px;padding:3px 6px">'
                 f'<b style="font-size:0.88rem">{name}</b>'
-                f'<div style="font-size:0.7rem;color:#888;font-family:monospace">{cid} · {aid}</div>'
+                f'<div style="font-size:0.75rem;color:#616161;font-family:monospace">{cid} · {aid}</div>'
                 + hp_html + '</div>',
                 unsafe_allow_html=True)
         with c2:
@@ -268,24 +286,25 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 run_at = (lr.get("run_at") or "")[:16]
                 st.markdown(
                     f'<div style="font-size:0.75rem;font-weight:700;color:#A100FF">{action_label}</div>'
-                    f'<div style="font-size:0.68rem;color:#888">{conf:.0%} · {run_at}</div>',
+                    f'<div style="font-size:0.75rem;color:#616161">{conf:.0%} · {run_at}</div>',
                     unsafe_allow_html=True)
-                if st.button("View", key=f"view_run_{cid}", use_container_width=True):
+                if st.button("↗ View", key=f"view_run_{cid}", use_container_width=True,
+                             help=f"Replay {action_label} run from {run_at}"):
                     if on_view_run:
                         on_view_run(lr["workflow_id"], cid)
             else:
                 st.markdown('<div style="font-size:0.75rem;color:#ccc">No runs yet</div>',
                             unsafe_allow_html=True)
         with c9:
-            if st.button("👤 Profile", key=f"view_{cid}", use_container_width=True):
-                if on_view_customer:
-                    on_view_customer(cid)
             if st.button("▶ Analyse", key=f"btn_{cid}_{aid}", use_container_width=True,
                          type="primary"):
                 st.session_state.dash_selected = {
                     "customer_id": cid, "account_id": aid, "name": name,
                 }
                 on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
+            if st.button("Profile", key=f"view_{cid}", use_container_width=True):
+                if on_view_customer:
+                    on_view_customer(cid)
 
         st.markdown(
             '<hr style="margin:2px 0;border:none;border-top:1px solid #F0F0F0">',

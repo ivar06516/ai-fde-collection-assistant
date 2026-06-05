@@ -44,9 +44,9 @@ def _agent_node(agent_key: str, status_info: dict) -> str:
         f'<div style="font-size:1rem;min-width:20px;text-align:center;margin-top:1px">{cfg["icon"]}</div>'
         f'<div style="flex:1">'
         f'<div style="font-size:0.84rem;font-weight:600">{cfg["label"]}</div>'
-        f'<div style="font-size:0.68rem;color:#999">{cfg["stage"]} · {cfg["model"]}</div>'
-        + (f'<div style="font-size:0.7rem;color:#137333;font-weight:600;margin-top:2px">{elapsed}</div>' if elapsed else "")
-        + (f'<div style="font-size:0.68rem;color:#C62828;margin-top:2px">{error[:60]}</div>' if error and status == "error" else "")
+        f'<div style="font-size:0.75rem;color:#999">{cfg["stage"]} · {cfg["model"]}</div>'
+        + (f'<div style="font-size:0.75rem;color:#137333;font-weight:600;margin-top:2px">{elapsed}</div>' if elapsed else "")
+        + (f'<div style="font-size:0.75rem;color:#C62828;margin-top:2px">{error[:60]}</div>' if error and status == "error" else "")
         + f'</div>'
         f'<div style="font-size:0.9rem;margin-top:2px">{spinner_html}</div>'
         f'</div>'
@@ -63,10 +63,10 @@ def _timeline_bars(agent_statuses: dict) -> str:
         ms_str = f"{ms:,}ms" if ms else "—"
         rows += (
             f'<div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.25rem">'
-            f'<span style="font-size:0.68rem;color:#888;min-width:80px;white-space:nowrap">{cfg["label"][:14]}</span>'
+            f'<span style="font-size:0.75rem;color:#616161;min-width:80px;white-space:nowrap">{cfg["label"][:14]}</span>'
             f'<div style="flex:1;height:7px;background:#EEE;border-radius:4px;overflow:hidden">'
             f'<div style="width:{pct}%;height:100%;background:#A100FF;border-radius:4px;transition:width 0.4s ease"></div></div>'
-            f'<span style="font-size:0.67rem;color:#888;min-width:44px;text-align:right">{ms_str}</span>'
+            f'<span style="font-size:0.67rem;color:#616161;min-width:44px;text-align:right">{ms_str}</span>'
             f'</div>'
         )
     return rows
@@ -75,14 +75,14 @@ def _timeline_bars(agent_statuses: dict) -> str:
 def render_execution_panel(agent_statuses: dict) -> None:
     """Render the left-column pipeline panel."""
     st.markdown(
-        '<div style="font-size:0.72rem;font-weight:700;color:#888;text-transform:uppercase;'
+        '<div style="font-size:0.75rem;font-weight:700;color:#616161;text-transform:uppercase;'
         'letter-spacing:0.06em;margin-bottom:0.8rem">Agent Execution Pipeline</div>',
         unsafe_allow_html=True,
     )
 
     for stage_label, agent_keys in STAGE_GROUPS:
         st.markdown(
-            f'<div style="background:#F3E5F5;color:#4A148C;font-size:0.68rem;font-weight:700;'
+            f'<div style="background:#F3E5F5;color:#4A148C;font-size:0.75rem;font-weight:700;'
             f'text-transform:uppercase;letter-spacing:0.05em;padding:2px 8px;border-radius:4px;'
             f'display:inline-block;margin-bottom:0.4rem">{stage_label}</div>',
             unsafe_allow_html=True,
@@ -101,7 +101,7 @@ def render_execution_panel(agent_statuses: dict) -> None:
     if completed_any:
         st.markdown(
             '<div style="margin-top:0.8rem;padding-top:0.8rem;border-top:1px solid #EEE">'
-            '<div style="font-size:0.68rem;color:#888;font-weight:700;text-transform:uppercase;'
+            '<div style="font-size:0.75rem;color:#616161;font-weight:700;text-transform:uppercase;'
             'letter-spacing:0.05em;margin-bottom:0.4rem">Elapsed Time</div>'
             + _timeline_bars(agent_statuses)
             + '</div>',

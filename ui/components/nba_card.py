@@ -52,15 +52,15 @@ def render_nba_card(recommendation: dict) -> None:
     st.markdown(
         f'<div style="background:linear-gradient(135deg,#A100FF0D,#fff);'
         f'border:2px solid #A100FF;border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1rem">'
-        f'<div style="font-size:0.8rem;color:#888;margin-bottom:0.3rem;font-weight:600;letter-spacing:0.05em">RECOMMENDED ACTION</div>'
+        f'<div style="font-size:0.8rem;color:#616161;margin-bottom:0.3rem;font-weight:600;letter-spacing:0.05em">RECOMMENDED ACTION</div>'
         f'<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">'
         f'<span style="{action_badge_style};padding:6px 16px;border-radius:20px;font-size:1.1rem;font-weight:800">{action_label}</span>'
         f'<span style="font-size:0.85rem;color:#666">{ch_icon} via <b>{channel.replace("_"," ").title()}</b></span>'
         f'</div>'
         f'<div style="display:flex;gap:1.5rem;margin-top:0.8rem;flex-wrap:wrap">'
-        f'<div><span style="color:#888;font-size:0.78rem">CONFIDENCE</span><br>'
+        f'<div><span style="color:#616161;font-size:0.78rem">CONFIDENCE</span><br>'
         f'<span style="font-size:1.4rem;font-weight:800;color:{conf_color}">{confidence:.0%}</span></div>'
-        f'<div><span style="color:#888;font-size:0.78rem">URGENCY</span><br>'
+        f'<div><span style="color:#616161;font-size:0.78rem">URGENCY</span><br>'
         f'<span style="{urgency_style};padding:3px 10px;border-radius:10px;font-size:0.82rem;font-weight:700">{urgency_label}</span></div>'
         + (f'<div><span style="{action_badge_style.replace("background:","background:")};;padding:3px 10px;border-radius:10px;font-size:0.78rem;font-weight:700">Dispute Hold Applied</span></div>' if blocked else "")
         + f'</div></div>',

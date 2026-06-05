@@ -125,7 +125,7 @@ footer                          { display:none !important; }
 }
 [data-testid="stMetricLabel"] { 
   color: var(--muted) !important; 
-  font-size: 0.72rem !important; 
+  font-size: 0.75rem !important; 
   font-weight: 600 !important; 
   text-transform: uppercase; 
   letter-spacing: 0.05em;

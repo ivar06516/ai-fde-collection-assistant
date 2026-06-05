@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="AI Collection Assistant",
     page_icon="🏦",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "styles.css")
@@ -119,7 +119,7 @@ with st.sidebar:
     st.markdown(
         '<div style="padding:0.5rem 0 0.8rem">'
         '<div style="color:#A100FF;font-size:1.1rem;font-weight:800;letter-spacing:-0.5px">AI Collection Assistant</div>'
-        '<div style="color:#888;font-size:0.72rem;margin-top:1px">Multi-Agent Architecture PoC</div>'
+        '<div style="color:#616161;font-size:0.75rem;margin-top:1px">Multi-Agent Architecture PoC</div>'
         '</div>',
         unsafe_allow_html=True,
     )
@@ -131,7 +131,7 @@ with st.sidebar:
     st.markdown(
         f'<div style="background:rgba(161,0,255,0.15);border:1px solid rgba(161,0,255,0.3);'
         f'border-radius:8px;padding:0.4rem 0.8rem;margin-bottom:0.8rem">'
-        f'<div style="font-size:0.68rem;color:#888;font-weight:600;text-transform:uppercase;'
+        f'<div style="font-size:0.75rem;color:#616161;font-weight:600;text-transform:uppercase;'
         f'letter-spacing:0.05em;margin-bottom:2px">LLM Provider</div>'
         f'<div style="color:#E0C8FF;font-weight:700;font-size:0.85rem">{provider_label}</div>'
         f'</div>',
@@ -140,7 +140,7 @@ with st.sidebar:
 
     # ── Navigation ──────────────────────────────────────────────────────────
     st.markdown(
-        '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
+        '<div style="font-size:0.75rem;color:#666;font-weight:700;text-transform:uppercase;'
         'letter-spacing:0.06em;margin-bottom:0.4rem">Navigation</div>',
         unsafe_allow_html=True,
     )
@@ -169,7 +169,7 @@ with st.sidebar:
             st.rerun()
         if cust_name and cur_page == "analysis":
             st.markdown(
-                f'<div style="font-size:0.72rem;color:#888;padding:1px 8px;'
+                f'<div style="font-size:0.75rem;color:#616161;padding:1px 8px;'
                 f'margin-bottom:4px">↳ {cust_name}</div>',
                 unsafe_allow_html=True,
             )
@@ -184,7 +184,7 @@ with st.sidebar:
             st.rerun()
         if cur_page == "profile":
             st.markdown(
-                f'<div style="font-size:0.72rem;color:#888;padding:1px 8px;'
+                f'<div style="font-size:0.75rem;color:#616161;padding:1px 8px;'
                 f'margin-bottom:4px">↳ {prof_name}</div>',
                 unsafe_allow_html=True,
             )
@@ -194,15 +194,15 @@ with st.sidebar:
 
     # ── Demo Scenarios (UC-009) ─────────────────────────────────────────────
     st.markdown(
-        '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
+        '<div style="font-size:0.75rem;color:#666;font-weight:700;text-transform:uppercase;'
         'letter-spacing:0.06em;margin-bottom:0.4rem">Demo Scenarios</div>',
         unsafe_allow_html=True,
     )
     DEMO_SCENARIOS = [
-        ("⬜ No Action",     "CUST-001", "ACC-001", "routine_review",   "Arjun Sharma — DPD=0, low risk"),
-        ("🚫 Dispute Hold",  "CUST-002", "ACC-002", "missed_payment",   "Priya Mehta — hold active"),
-        ("⚠ Critical",       "CUST-003", "ACC-003", "routine_review",   "Rahul Singh — DPD=92, critical"),
-        ("💼 Hardship",      "CUST-004", "ACC-004", "hardship_claim",   "Kavita Patel — unemployment"),
+        ("No Action  — Arjun Sharma",  "CUST-001", "ACC-001", "routine_review",  "DPD=0, low risk, current account"),
+        ("Dispute Hold — Priya Mehta", "CUST-002", "ACC-002", "missed_payment",  "Collection hold active, identity_theft dispute"),
+        ("Critical  — Rahul Singh",    "CUST-003", "ACC-003", "routine_review",  "DPD=92, high risk, critical arrears"),
+        ("Hardship  — Kavita Patel",   "CUST-004", "ACC-004", "hardship_claim",  "Hardship flag, unemployment, DPD=35"),
     ]
     for label, cid, aid, trigger, tooltip in DEMO_SCENARIOS:
         if st.button(label, use_container_width=True, help=tooltip, key=f"demo_{cid}"):
@@ -225,25 +225,37 @@ with st.sidebar:
 
     # ── Data Management ─────────────────────────────────────────────────────
     st.markdown(
-        '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
+        '<div style="font-size:0.75rem;color:#666;font-weight:700;text-transform:uppercase;'
         'letter-spacing:0.06em;margin-bottom:0.4rem">Data Management</div>',
         unsafe_allow_html=True,
     )
     if st.button("🔄  Refresh Portfolio", use_container_width=True):
         st.session_state.portfolio = None
         st.rerun()
-    if st.button("🌱  Seed Database", use_container_width=True):
-        import subprocess
-        r = subprocess.run(
-            [sys.executable, "scripts/seed_db.py", "--reset"],
-            capture_output=True, text=True,
-            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        )
-        if r.returncode == 0:
-            st.success("Database re-seeded!")
-            st.session_state.portfolio = None
-        else:
-            st.error(r.stderr[:200])
+    if st.button("🌱  Reset & Reseed Database", use_container_width=True):
+        st.session_state["_confirm_seed"] = True
+    if st.session_state.get("_confirm_seed"):
+        st.warning("This will delete **all existing data and run history**. Continue?")
+        col_yes, col_no = st.columns(2)
+        with col_yes:
+            if st.button("Yes, Reset", type="primary", use_container_width=True, key="confirm_yes"):
+                st.session_state["_confirm_seed"] = False
+                import subprocess
+                r = subprocess.run(
+                    [sys.executable, "scripts/seed_db.py", "--reset"],
+                    capture_output=True, text=True,
+                    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                )
+                if r.returncode == 0:
+                    st.success("Database re-seeded with 100 customers!")
+                    st.session_state.portfolio = None
+                else:
+                    st.error("Seed failed. Check that the server is running correctly.")
+                    st.caption(r.stderr[:120])
+        with col_no:
+            if st.button("Cancel", use_container_width=True, key="confirm_no"):
+                st.session_state["_confirm_seed"] = False
+                st.rerun()
 
 
 # ── Helper: customer banner (shared by Analysis page) ─────────────────────────
@@ -259,13 +271,13 @@ def _customer_banner(row: dict, wf_id: str = ""):
     dpd_c  = "#C62828" if dpd>60 else "#E65100" if dpd>30 else "#2E7D32"
     trigger = st.session_state.get("dash_trigger","routine_review").replace("_"," ").title()
     wf_span = (f'<span style="margin-left:auto;font-family:monospace;background:#F3E5F5;color:#4A148C;'
-               f'padding:3px 10px;border-radius:8px;font-size:0.72rem;font-weight:700">{wf_id}</span>'
+               f'padding:3px 10px;border-radius:8px;font-size:0.75rem;font-weight:700">Ref: {wf_id[:18]}</span>'
                if wf_id else "")
     st.markdown(
         f'<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;'
         f'padding:0.7rem 1.2rem;margin-bottom:0.8rem;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">'
         f'<div><div style="font-size:1.05rem;font-weight:700">{name}</div>'
-        f'<div style="font-size:0.72rem;color:#888;font-family:monospace">{cid} · {aid}</div></div>'
+        f'<div style="font-size:0.75rem;color:#616161;font-family:monospace">{cid} · {aid}</div></div>'
         f'<span style="color:#DDD">|</span>'
         f'<span style="{rs};padding:3px 10px;border-radius:10px;font-size:0.73rem;font-weight:700">'
         f'{risk.upper()} RISK</span>'
@@ -362,9 +374,10 @@ if st.session_state.page == "dashboard":
                 full_state = resp.json().get("full_state") or {}
                 go_to_replay(wf_id, full_state, cid)
             else:
-                st.error(f"Could not load run {wf_id}")
+                st.warning("This run result could not be loaded. It may have been cleared from the server cache.")
         except Exception as e:
-            st.error(f"Error: {e}")
+            st.error("Could not load this run. Please try running a fresh analysis.")
+            st.caption(f"Technical detail: {str(e)[:120]}")
 
     render_dashboard(st.session_state.portfolio, go_to_analysis,
                      on_view_customer=go_to_profile,
@@ -399,7 +412,12 @@ elif st.session_state.page == "analysis":
             st.session_state.workflow_id = wf_id
             st.rerun()
         except Exception as e:
-            st.error(f"Failed to start pipeline: {e}")
+            st.error(
+                "**Analysis could not start.** "
+                "The AI service may be temporarily unavailable. "
+                "Please check the API server is running, then try again."
+            )
+            st.caption(f"Technical detail: {str(e)[:120]}")
         st.stop()
 
     wf_id = st.session_state.workflow_id
@@ -438,11 +456,11 @@ elif st.session_state.page == "analysis":
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:0.8rem;background:#fff;border:1px solid #E0E0E0;'
         f'border-radius:8px;padding:0.55rem 1.2rem;margin-bottom:0.8rem">'
-        f'<span style="font-size:0.72rem;font-weight:600;color:#888;min-width:110px">Analysis Progress</span>'
+        f'<span style="font-size:0.75rem;font-weight:600;color:#616161;min-width:110px">Analysis Progress</span>'
         f'<div style="flex:1;height:6px;background:#EEE;border-radius:3px;overflow:hidden">'
         f'<div style="width:{progress_pct}%;height:100%;background:{bar_color};border-radius:3px;transition:width 0.4s ease"></div></div>'
         f'<span style="font-size:0.78rem;font-weight:700;color:{bar_color};min-width:32px">{progress_pct}%</span>'
-        f'<span style="font-size:0.8rem;color:#888">{prog_label}</span></div>',
+        f'<span style="font-size:0.8rem;color:#616161">{prog_label}</span></div>',
         unsafe_allow_html=True,
     )
 
@@ -545,7 +563,7 @@ elif st.session_state.page == "profile":
             if detail:
                 st.session_state.profile_detail = detail
             else:
-                st.error(f"Could not load profile for {cid}")
+                st.error(f"Customer profile could not be loaded. Please refresh the portfolio or try again.")
                 st.stop()
 
     detail = st.session_state.profile_detail
@@ -579,9 +597,10 @@ elif st.session_state.page == "profile":
                 # go_to_replay injects synthetic agent_statuses if missing
                 go_to_replay(wf_id, full_state, customer_id)
             else:
-                st.error(f"Could not load run {wf_id}")
+                st.warning("This run result could not be loaded. It may have been cleared from the server cache.")
         except Exception as e:
-            st.error(f"Error loading run: {e}")
+            st.error("Could not load this run. Please try running a fresh analysis.")
+            st.caption(f"Technical detail: {str(e)[:120]}")
 
     render_customer_profile_page(detail, go_to_analysis_from_profile,
                                   runs=profile_runs, on_view_run=go_to_replay_from_profile)
