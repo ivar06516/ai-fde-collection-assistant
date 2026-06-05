@@ -140,7 +140,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         return
 
     # Column headers
-    h_cols = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 1.5])
+    h_cols = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 2])
     for col_widget, label in zip(h_cols, ["Customer", "Risk", "Product", "Status",
                                            "DPD", "Outstanding", "Hold", "Last Run", "Actions"]):
         with col_widget:
@@ -167,7 +167,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         dpd_clr = DPD_COLOR.get(band, "#333")
         is_sel  = (st.session_state.get("dash_selected") or {}).get("customer_id") == cid
 
-        c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 1.5])
+        c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 2])
         with c1:
             bg = "#F3E5F5" if is_sel else "transparent"
             hp_html = (f'<div style="font-size:0.7rem;color:#4527A0">Hardship: {hreason or "Active"}</div>'
@@ -217,18 +217,15 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 st.markdown('<div style="font-size:0.75rem;color:#ccc">No runs yet</div>',
                             unsafe_allow_html=True)
         with c9:
-            sub1, sub2 = st.columns(2)
-            with sub1:
-                if st.button("Profile", key=f"view_{cid}", use_container_width=True):
-                    if on_view_customer:
-                        on_view_customer(cid)
-            with sub2:
-                if st.button("Analyse", key=f"btn_{cid}_{aid}", use_container_width=True,
-                             type="primary"):
-                    st.session_state.dash_selected = {
-                        "customer_id": cid, "account_id": aid, "name": name,
-                    }
-                    on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
+            if st.button("👤 Profile", key=f"view_{cid}", use_container_width=True):
+                if on_view_customer:
+                    on_view_customer(cid)
+            if st.button("▶ Analyse", key=f"btn_{cid}_{aid}", use_container_width=True,
+                         type="primary"):
+                st.session_state.dash_selected = {
+                    "customer_id": cid, "account_id": aid, "name": name,
+                }
+                on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
 
         st.markdown(
             '<hr style="margin:2px 0;border:none;border-top:1px solid #F0F0F0">',

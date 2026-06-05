@@ -21,7 +21,20 @@ if os.path.exists(css_path):
     with open(css_path) as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-st.markdown("""<style>@keyframes spin{to{transform:rotate(360deg)}}</style>""", unsafe_allow_html=True)
+st.markdown("""<style>
+/* Hide all Streamlit chrome — toolbar, deploy, menu, footer */
+[data-testid="stToolbar"]          { display: none !important; }
+[data-testid="stDecoration"]       { display: none !important; }
+[data-testid="stStatusWidget"]     { display: none !important; }
+header[data-testid="stHeader"]     { display: none !important; }
+#MainMenu                          { display: none !important; }
+footer                             { display: none !important; }
+.stDeployButton                    { display: none !important; }
+/* Tighter top padding since header is hidden */
+.block-container { padding-top: 1rem !important; }
+/* Spinner animation */
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>""", unsafe_allow_html=True)
 
 # ── Imports ────────────────────────────────────────────────────────────────────
 from ui.components.arrears_card import render_arrears_card

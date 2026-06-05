@@ -1,90 +1,187 @@
-
-/* Accenture FDE Theme - AI Collection Assistant */
+﻿/* ═══════════════════════════════════════════════════════════════════
+   AI FDE Collection Assistant — Accenture Theme
+   Primary: #A100FF  Nav: #1A1A1A  Success: #137333  Danger: #C62828
+═══════════════════════════════════════════════════════════════════ */
 :root {
-    --accent: #A100FF;
-    --accent-dark: #7B00CC;
-    --nav-bg: #1A1A1A;
-    --card-bg: #FFFFFF;
-    --success: #00B050;
-    --warning: #FFA500;
-    --error: #E30000;
-    --text-primary: #1A1A1A;
-    --text-muted: #666666;
+  --accent:       #A100FF;
+  --accent-dark:  #7B00CC;
+  --accent-light: #F3E5F5;
+  --nav:          #1A1A1A;
+  --success:      #137333;
+  --success-bg:   #E8F5E9;
+  --warning:      #E65100;
+  --warning-bg:   #FFF3E0;
+  --danger:       #C62828;
+  --danger-bg:    #FFEBEE;
+  --hardship:     #4527A0;
+  --hardship-bg:  #EDE7F6;
+  --border:       #E8E8E8;
+  --card:         #FFFFFF;
+  --bg:           #F7F7F8;
+  --text:         #1A1A1A;
+  --muted:        #6B7280;
+  --radius:       10px;
+  --shadow:       0 1px 4px rgba(0,0,0,0.06);
+  --shadow-md:    0 4px 12px rgba(0,0,0,0.10);
 }
 
-/* Header/Nav */
-.fde-header {
-    background: var(--nav-bg);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+/* ── Base ── */
+body, .stApp { background: var(--bg) !important; }
+.block-container { max-width: 1440px; padding: 0.8rem 1.5rem !important; }
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+  background: var(--nav) !important;
+  border-right: none !important;
 }
-.fde-logo-text {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: var(--accent);
+[data-testid="stSidebar"] * { color: #E0E0E0 !important; }
+[data-testid="stSidebar"] .stMarkdown h3 {
+  color: var(--accent) !important;
+  font-size: 0.95rem !important;
+  font-weight: 800 !important;
+}
+[data-testid="stSidebar"] hr { border-color: #333 !important; }
+[data-testid="stSidebar"] .stButton > button {
+  background: #2A2A2A !important;
+  border: 1px solid #444 !important;
+  color: #E0E0E0 !important;
+  border-radius: 7px !important;
+  font-size: 0.82rem !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+  background: #333 !important;
+  border-color: var(--accent) !important;
+  color: white !important;
+}
+/* Primary sidebar button */
+[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark)) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 700 !important;
+}
+[data-testid="stSidebar"] .stAlertContainer {
+  background: rgba(161,0,255,0.15) !important;
+  border-left: 3px solid var(--accent) !important;
+  border-radius: 8px !important;
+}
+[data-testid="stSidebar"] .stAlertContainer p { color: #E0E0E0 !important; }
+
+/* ── Primary buttons (Analyse, Run Analysis, etc.) ── */
+.stButton > button[kind="primary"] {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 7px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 2px 8px rgba(161,0,255,0.30) !important;
+  transition: all 0.15s ease !important;
+}
+.stButton > button[kind="primary"]:hover {
+  background: linear-gradient(135deg, var(--accent-dark) 0%, #5A0099 100%) !important;
+  box-shadow: 0 4px 14px rgba(161,0,255,0.45) !important;
+  transform: translateY(-1px) !important;
 }
 
-/* Cards */
-.agent-card {
-    background: var(--card-bg);
-    border: 1px solid #E0E0E0;
-    border-radius: 10px;
-    padding: 1.2rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+/* ── Secondary buttons ── */
+.stButton > button[kind="secondary"] {
+  background: white !important;
+  color: var(--accent) !important;
+  border: 1.5px solid var(--accent) !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+  transition: all 0.15s !important;
 }
-.agent-card-header {
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--accent);
-    margin-bottom: 0.5rem;
+.stButton > button[kind="secondary"]:hover {
+  background: var(--accent-light) !important;
 }
 
-/* NBA Recommendation card */
-.nba-card {
-    background: linear-gradient(135deg, #A100FF11 0%, #FFFFFF 100%);
-    border: 2px solid var(--accent);
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
+/* ── Metrics ── */
+[data-testid="stMetric"] {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  padding: 0.8rem 1rem !important;
+  box-shadow: var(--shadow) !important;
 }
-.nba-action-badge {
-    background: var(--accent);
-    color: white;
-    padding: 0.4rem 1rem;
-    border-radius: 20px;
-    font-weight: 700;
-    font-size: 1rem;
-    display: inline-block;
+[data-testid="stMetricLabel"] { color: var(--muted) !important; font-size: 0.75rem !important; font-weight: 600 !important; text-transform: uppercase; letter-spacing: 0.04em; }
+[data-testid="stMetricValue"] { color: var(--text) !important; font-size: 1.5rem !important; font-weight: 800 !important; }
+
+/* ── Expander ── */
+[data-testid="stExpander"] {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  background: var(--card) !important;
+  box-shadow: var(--shadow) !important;
 }
-.nba-confidence {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--accent);
+[data-testid="stExpander"] summary {
+  font-weight: 600 !important;
+  color: var(--text) !important;
 }
 
-/* Agent pipeline status rows */
-.pipeline-row {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.6rem 1rem;
-    border-radius: 6px;
-    margin-bottom: 0.4rem;
-    background: #F8F8F8;
+/* ── Selectbox / Input ── */
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stTextInput"] > div > div > input {
+  border-radius: 7px !important;
+  border-color: var(--border) !important;
+  background: var(--card) !important;
+  font-size: 0.85rem !important;
 }
-.status-waiting { color: var(--text-muted); }
-.status-running { color: var(--warning); }
-.status-completed { color: var(--success); }
-.status-error { color: var(--error); }
+[data-testid="stSelectbox"] > div > div:focus-within,
+[data-testid="stTextInput"] > div > div > input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(161,0,255,0.12) !important;
+}
 
-/* Risk segment badges */
-.risk-low { background: #E6F4EA; color: #137333; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
-.risk-medium { background: #FFF3E0; color: #E65100; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
-.risk-high { background: #FCE8E6; color: #C62828; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
-.risk-hardship { background: #EDE7F6; color: #4527A0; padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+/* ── Info / Success / Error banners ── */
+[data-testid="stAlert"] {
+  border-radius: var(--radius) !important;
+  border: none !important;
+}
+
+/* ── Plotly chart containers ── */
+[data-testid="stPlotlyChart"] {
+  background: var(--card) !important;
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--border) !important;
+  padding: 0.5rem !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* ── Tab styling ── */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+  background: #F0F0F0 !important;
+  border-radius: 8px !important;
+  padding: 3px !important;
+  gap: 2px !important;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+  border-radius: 6px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  color: var(--muted) !important;
+  padding: 5px 14px !important;
+}
+[data-testid="stTabs"] [aria-selected="true"] {
+  background: var(--card) !important;
+  color: var(--accent) !important;
+  box-shadow: var(--shadow) !important;
+}
+
+/* ── Spinner ── */
+[data-testid="stSpinner"] { color: var(--accent) !important; }
+
+/* ── Dividers ── */
+hr { border-color: var(--border) !important; }
+
+/* ── Column gap fix ── */
+[data-testid="stHorizontalBlock"] { gap: 0.8rem !important; }
+
+/* ── Markdown h2 page title ── */
+.stMarkdown h2 {
+  color: var(--text) !important;
+  font-weight: 800 !important;
+  font-size: 1.6rem !important;
+  margin-bottom: 0.3rem !important;
+}
