@@ -20,30 +20,30 @@ from collection_assistant.db.models import (
 )
 from collection_assistant.db.session import create_all_tables, get_engine
 
-fake = Faker("en_IN")   # Indian locale — names, addresses, phone numbers
+fake = Faker("en_US")   # Indian locale — names, addresses, phone numbers
 fake.seed_instance(42)
 random.seed(42)
 
-# ── Indian Geography ─────────────────────────────────────────────────────────
-INDIAN_CITIES = [
-    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata",
-    "Pune", "Ahmedabad", "Jaipur", "Surat", "Lucknow", "Kanpur",
-    "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam", "Pimpri",
-    "Patna", "Vadodara", "Ghaziabad", "Ludhiana", "Agra", "Nashik",
-    "Coimbatore", "Madurai", "Meerut", "Rajkot", "Kalyan", "Varanasi",
+# ── US Geography ─────────────────────────────────────────────────────────────
+INDIAN_CITIES = [  # variable name kept for compatibility, values are US cities
+    "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia",
+    "San Antonio", "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville",
+    "Fort Worth", "Columbus", "Charlotte", "Indianapolis", "San Francisco", "Seattle",
+    "Denver", "Nashville", "Oklahoma City", "El Paso", "Washington", "Las Vegas",
+    "Boston", "Memphis", "Louisville", "Portland", "Baltimore", "Milwaukee",
 ]
-INDIAN_STATES = [
-    "Maharashtra", "Karnataka", "Tamil Nadu", "Telangana", "Delhi",
-    "West Bengal", "Gujarat", "Rajasthan", "Uttar Pradesh", "Madhya Pradesh",
-    "Punjab", "Bihar", "Andhra Pradesh", "Kerala", "Haryana",
+INDIAN_STATES = [  # variable name kept for compatibility, values are US states
+    "California", "Texas", "Florida", "New York", "Illinois", "Pennsylvania",
+    "Ohio", "Georgia", "North Carolina", "Michigan", "New Jersey", "Virginia",
+    "Washington", "Arizona", "Massachusetts", "Tennessee", "Indiana", "Missouri",
 ]
-# 6-digit Indian PIN codes by state prefix
-INDIAN_PINCODES = [
-    "400001", "110001", "560001", "500001", "600001", "700001",
-    "411001", "380001", "302001", "395001", "226001", "208001",
-    "440001", "452001", "421001", "462001", "530001", "411017",
-    "800001", "390001", "201001", "141001", "282001", "422001",
-    "641001", "625001", "250001", "360001", "421301", "221001",
+# US ZIP codes
+INDIAN_PINCODES = [  # variable name kept for compatibility, values are US ZIPs
+    "10001", "90001", "60601", "77001", "85001", "19101",
+    "78201", "92101", "75201", "95101", "73301", "32099",
+    "76101", "43004", "28201", "46201", "94102", "98101",
+    "80201", "37201", "73101", "79901", "20001", "89101",
+    "02101", "38101", "40201", "97201", "21201", "53201",
 ]
 
 # ── Indian first/last names ───────────────────────────────────────────────────
@@ -88,7 +88,7 @@ INTERACTION_NOTES_BY_OUTCOME = {
         "Three call attempts made during business hours — no response. Escalating to written notice.",
     ],
     "promise_to_pay": [
-        "Customer committed to paying Rs.{amount} by {date}. Payment reference noted for follow-up.",
+        "Customer committed to paying ${amount} by {date}. Payment reference noted for follow-up.",
         "Customer promised full settlement within 10 days. Verbal commitment recorded.",
         "Customer confirmed partial payment of overdue amount will be made by end of month.",
         "Post-dated cheque arrangement discussed. Customer to deposit cheque at branch.",
@@ -102,9 +102,9 @@ INTERACTION_NOTES_BY_OUTCOME = {
         "Customer denied receiving previous notices. Resent statements via registered post.",
     ],
     "payment_arranged": [
-        "Payment arrangement agreed: Rs.5,000/month for 6 months starting next EMI date.",
+        "Payment arrangement agreed: $5,000/month for 6 months starting next EMI date.",
         "Customer enrolled in restructuring plan. Standing instruction set up for monthly deductions.",
-        "Partial payment of Rs.10,000 received. Balance EMI schedule revised and shared.",
+        "Partial payment of $10,000 received. Balance EMI schedule revised and shared.",
         "ECS mandate obtained. Auto-debit for EMI to begin from 1st of next month.",
         "Settlement offer accepted. Customer to pay 80% of outstanding as full and final settlement.",
     ],
@@ -112,13 +112,13 @@ INTERACTION_NOTES_BY_OUTCOME = {
 
 DISPUTE_DESCRIPTIONS = {
     "billing_error": [
-        "Customer reports incorrect EMI amount debited — charged Rs.8,500 instead of agreed Rs.7,200.",
+        "Customer reports incorrect EMI amount debited — charged $8,500 instead of agreed $7,200.",
         "Duplicate charge detected on statement. Customer did not authorise second debit on 15th.",
         "Interest calculation appears incorrect. Customer disputes the outstanding principal shown.",
-        "Processing fee of Rs.1,500 levied without prior intimation. Customer requests reversal.",
+        "Processing fee of $1,500 levied without prior intimation. Customer requests reversal.",
     ],
     "fraud_claim": [
-        "Customer reports transactions not made by them totalling Rs.45,000 between 10-15 March.",
+        "Customer reports transactions not made by them totalling $45,000 between 10-15 March.",
         "Fraudulent withdrawals reported from linked savings account. FIR filed with local police.",
         "Customer did not authorise online transactions. Reports account compromised via phishing.",
         "Card cloned — multiple POS transactions in locations customer was not present.",
@@ -136,10 +136,10 @@ DISPUTE_DESCRIPTIONS = {
         "Insurance premium bundled without customer consent at time of loan disbursement.",
     ],
     "payment_dispute": [
-        "NEFT payment of Rs.25,000 made on 5th March not credited to loan account after 7 days.",
+        "NEFT payment of $25,000 made on 5th March not credited to loan account after 7 days.",
         "Customer's cheque cleared from bank but not applied to account. Bank advice attached.",
         "Online payment failed but amount debited. Customer requests immediate credit or reversal.",
-        "Auto-debit executed twice for same EMI period. Excess debit of Rs.6,200 to be refunded.",
+        "Auto-debit executed twice for same EMI period. Excess debit of $6,200 to be refunded.",
     ],
 }
 
@@ -207,18 +207,18 @@ def make_customer(session: Session, customer_id: str, first: str, last: str,
     dob = fake.date_of_birth(minimum_age=22, maximum_age=65)
     today = date.today()
     age = (today - dob).days // 365
-    income_by_risk = {"low": (600000, 1800000), "medium": (300000, 700000),
-                       "high": (180000, 420000), "hardship": (90000, 250000)}
+    income_by_risk = {"low": (65000, 150000), "medium": (38000, 75000),
+                       "high": (22000, 48000), "hardship": (14000, 32000)}
     lo, hi = income_by_risk[risk]
     emp = "unemployed" if hardship_reason == "unemployment" else random.choice(EMPLOYMENT_STATUSES)
     city, state, pin = _random_location()
-    mobile = f"+91 {random.randint(7000000000,9999999999)}"
+    mobile = f"+1-{random.randint(200,999)}-{random.randint(100,999)}-{random.randint(1000,9999)}"
     c = Customer(
         customer_id=customer_id,
         first_name=first, last_name=last,
         date_of_birth=dob, age=age,
         gender=random.choice(["M", "F"]),
-        email=f"{first.lower()}.{last.lower()}{random.randint(1,99)}@gmail.com",
+        email=f"{first.lower()}.{last.lower()}{random.randint(1,99)}@{random.choice(['gmail.com','yahoo.com','outlook.com','hotmail.com'])}",
         mobile_number=mobile[:15],
         city=city, state=state, postcode=pin,
         employment_status=emp,
