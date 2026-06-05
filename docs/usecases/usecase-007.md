@@ -10,7 +10,7 @@
 | **Priority** | P0 — transparency is a stated PoC goal |
 | **Delivery Phase** | Phase 7 (Audit Agent), Phase 8 (API endpoint), Phase 9 (UI expander) |
 | **Pipeline Stage** | Stage 3 — Audit Agent runs after NBA Agent |
-| **Model** | `llama-3.1-8b-instant` (lightweight logging agent) |
+| **Model** | None — Audit Agent is deterministic (no LLM call). `llama-3.1-8b-instant` config kept for future extension. |
 
 ---
 
@@ -69,43 +69,43 @@
 - **Given** a completed pipeline run with `workflow_status = "completed"`
 - **When** the Audit Agent runs and `GET /audit` is called
 - **Then** the `agents` array in the response contains exactly 6 entries in order: `customer_profile`, `account_profile`, `arrears_prediction`, `dispute`, `nba`, `audit`
-- **Verified by** Phase 7 unit test asserting audit response structure
+- **Verified by** unit test `test_audit_agent.py::test_all_six_agents_in_lineage`
 
 ### AC-007-02: Input and Output Summaries Match State
-- **Given** John Smith (`CUST-001`) with `days_past_due = 45`
+- **Given** Priya Mehta (`CUST-002`, DPD=45, credit_card, delinquent, collection hold active)
 - **When** the Audit Trail is rendered
-- **Then** the `account_profile` agent row shows `output_summary.days_past_due = 45`; the `nba` agent row shows `output_summary.action` matching `state.nba_recommendation.action`
-- **Verified by** Phase 7 unit test cross-referencing audit output against state
+- **Then** the `account_profile` row has `output_keys` containing `days_past_due`; the `nba` row shows `nba_action = "place_on_hold"` matching `state.nba_recommendation.action`; the `dispute` row shows `output_keys` containing `collection_hold`
+- **Verified by** unit test `test_audit_agent.py::test_audit_record_fields_match_state`
 
 ### AC-007-03: Elapsed Times Recorded for Every Agent
 - **Given** a completed pipeline run
 - **When** `GET /audit` returns
-- **Then** every agent entry has `elapsed_ms > 0` and the sum of all `elapsed_ms` values is ≤ `total_execution_ms` (parallel execution means sum > total is possible; sum ≤ total * 2 is a reasonable bound)
+- **Then** every live-run agent entry has `elapsed_ms > 0` (replay mode entries may be `None`) and the sum of all `elapsed_ms` values is ≤ `total_execution_ms` (parallel execution means sum > total is possible; sum ≤ total * 2 is a reasonable bound)
 - **Verified by** Phase 7 unit test asserting elapsed_ms presence and bounds
 
 ### AC-007-04: Audit Record Persists in DB
 - **Given** a completed workflow run
 - **When** the Audit Agent writes its report
 - **Then** a row exists in `workflow_audit` with the matching `workflow_id`; `nba_action` is non-null; `full_state_json` is non-null and parseable as valid JSON; `status = "completed"`
-- **Verified by** Phase 11 integration test querying `workflow_audit` directly after run
+- **Verified by** unit test `test_audit_agent.py::test_audit_record_persists_in_db`
 
 ### AC-007-05: Dispute Hold Visible in Audit Trail
-- **Given** Sarah Jones (`CUST-002`) whose dispute triggered `collection_hold = True`
+- **Given** Priya Mehta (`CUST-002`) whose dispute triggered `collection_hold = True`
 - **When** the Audit Trail is rendered
 - **Then** the `dispute` agent row shows `output_summary.collection_hold = true`; the `nba` agent row shows `output_summary.action = "place_on_hold"` and `output_summary.blocked_by_dispute = true`
-- **Verified by** Phase 11 named-scenario integration test for Sarah Jones
+- **Verified by** Phase 11 unit test `test_audit_agent.py::test_dispute_hold_visible_in_audit`
 
 ### AC-007-06: Audit Trail Accessible via API Independently of UI
 - **Given** a completed `workflow_id`
 - **When** `GET /collections/{workflow_id}/audit` is called directly
 - **Then** response is HTTP 200 with valid JSON matching the full audit schema; no authentication required (PoC scope)
-- **Verified by** Phase 8 API integration test
+- **Verified by** unit test `test_audit_agent.py::test_audit_api_returns_200`
 
-### AC-007-07: Audit Agent Uses Haiku Model (Cost Control)
+### AC-007-07: Audit Agent Is Deterministic — No LLM Call
 - **Given** any completed pipeline run
-- **When** token usage metrics are checked
-- **Then** `llm_tokens_used_total{agent="audit",model="llama-3.1-8b-instant"}` counter is incremented; Haiku is not used for any other agent
-- **Verified by** Grafana `llm_tokens_used_total` metric filtered by model
+- **When** the Audit Agent executes
+- **Then** no LLM API call is made by the Audit Agent; `build_audit_record()` constructs the lineage directly from `CollectionWorkflowState`; total Groq API calls per pipeline run = 4 (customer, account, dispute, nba)
+- **Verified by** unit test `test_audit_agent.py::test_audit_agent_makes_no_llm_call`
 
 ---
 

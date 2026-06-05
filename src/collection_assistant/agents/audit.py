@@ -21,10 +21,14 @@ def run_audit_agent(state: CollectionWorkflowState) -> CollectionWorkflowState:
 
     try:
         workflow_id = state["workflow_id"]
-        audit_data = build_audit_record(workflow_id, state)
+        elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
+
+        # AC-007-01/03: pass audit elapsed so it appears as the 6th lineage entry
+        audit_data = build_audit_record(workflow_id, state, audit_elapsed_ms=elapsed_ms)
         state["audit_record"] = audit_data
 
         nba = state.get("nba_recommendation") or {}
+        # Include agent_statuses in full_state_json for elapsed_ms preservation
         record = WorkflowAudit(
             workflow_id=workflow_id,
             customer_id=state["customer_id"],
@@ -36,7 +40,7 @@ def run_audit_agent(state: CollectionWorkflowState) -> CollectionWorkflowState:
             nba_rationale=nba.get("rationale"),
             full_state_json=json.dumps({
                 k: v for k, v in state.items()
-                if k not in ("agent_statuses",)
+                if k != "agent_statuses"          # excluded to keep JSON compact
             }, default=str),
             status=state.get("workflow_status", "completed"),
             total_ms=state.get("total_ms"),
@@ -44,7 +48,6 @@ def run_audit_agent(state: CollectionWorkflowState) -> CollectionWorkflowState:
         with db_session() as session:
             session.add(record)
 
-        elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
         state["agent_statuses"]["audit"].update({
             "status": "completed",
             "completed_at": datetime.now(timezone.utc).isoformat(),
