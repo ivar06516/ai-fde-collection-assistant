@@ -18,7 +18,7 @@
 - SQLite DB is seeded (UC-008 completed)
 - `GROQ_API_KEY` is set in the deployment environment (free — console.groq.com)
 - FastAPI backend is running — `GET /health` returns `{"status": "healthy"}`
-- Streamlit UI is accessible at `https://fde-collection-assistant.streamlit.app`
+- Streamlit UI is accessible at `http://localhost:8501` (local) or Streamlit Community Cloud (deployed)
 
 ---
 

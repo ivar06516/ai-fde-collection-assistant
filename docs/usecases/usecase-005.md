@@ -58,19 +58,19 @@
 ## Acceptance Criteria
 
 ### AC-005-01: Active Dispute Sets Collection Hold True
-- **Given** Sarah Jones (`CUST-002` / `ACC-002`) has an active `identity_theft` dispute (`DISP-001`) with `collection_hold = 1` in DB
+- **Given** Priya Mehta (`CUST-002` / `ACC-002`) has an active `identity_theft` dispute (`DISP-001`) with `collection_hold = 1` in DB
 - **When** the Dispute Agent runs for `ACC-002`
 - **Then** `dispute_summary.collection_hold = True` and `dispute_summary.hold_reason` is non-empty
 - **Verified by** unit test `test_dispute_agent.py::test_active_dispute_sets_hold_true`
 
 ### AC-005-02: No Active Disputes Returns Hold False
-- **Given** James Chen (`CUST-001` / `ACC-001`) has no active disputes (0 open rows for `ACC-001`)
+- **Given** Arjun Sharma (`CUST-001` / `ACC-001`) has no active disputes (0 open rows for `ACC-001`)
 - **When** `check_collection_hold` tool runs for `ACC-001`
 - **Then** `collection_hold = False` and `hold_reason` is empty
 - **Verified by** unit test `test_dispute_agent.py::test_no_disputes_returns_hold_false`
 
 ### AC-005-03: Multiple Active Disputes All Listed
-- **Given** David Brown (`CUST-007` / `ACC-007`) has 2 active disputes in the DB (seeded)
+- **Given** Suresh Kumar (`CUST-007` / `ACC-007`) has 2 active disputes (`DISP-002` fraud_claim + `DISP-003` billing_error) in the DB (seeded)
 - **When** the Dispute Agent runs for `ACC-007`
 - **Then** `dispute_summary.active_disputes` list length is 2; both dispute IDs are present
 - **Verified by** unit test `test_dispute_agent.py::test_multiple_disputes_all_listed`

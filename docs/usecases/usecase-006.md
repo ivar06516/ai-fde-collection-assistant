@@ -10,7 +10,7 @@
 | **Priority** | P0 — the primary deliverable of the entire system |
 | **Delivery Phase** | Phase 6 |
 | **Pipeline Stage** | Stage 3 — sequential, requires all Stage 1 and Stage 2 outputs |
-| **Model** | `llama-3.3-70b-versatile` (free_cloud/default) · `llama-3.3-70b-versatile` (premium/hybrid) |
+| **Model** | `llama-3.3-70b-versatile` (Groq — free) |
 
 ---
 
@@ -66,7 +66,7 @@
 ## Postconditions
 
 - `state.nba_recommendation` populated: action, channel, rationale, confidence, alternatives
-- NBA card rendered in Screen 3 with Accenture purple border
+- NBA card rendered in Screen 3 with accent purple border
 - `nba_action_recommended_total` Prometheus counter incremented
 
 ---
@@ -89,16 +89,16 @@
 - **Given** `arrears_trajectory = "critical"` and `default_probability > 0.85` and no dispute hold
 - **When** the NBA Agent runs
 - **Then** `nba_recommendation.action` is one of `"escalate_to_legal"` or `"offer_settlement"`
-- **Verified by** Phase 11 named-scenario integration test for Michael Tan (Critical Arrears)
+- **Verified by** Phase 11 named-scenario integration test for Rahul Singh (Critical Arrears)
 
 ### AC-006-04: Improving Trajectory Routes to Light-Touch Actions
 - **Given** `arrears_trajectory = "improving"` and `days_past_due < 15` and no dispute hold
 - **When** the NBA Agent runs
 - **Then** `nba_recommendation.action` is one of `"no_action_required"` or `"send_sms"`
-- **Verified by** Phase 11 named-scenario integration test for Emily Carter (Improving Customer)
+- **Verified by** Phase 11 named-scenario integration test for Kavita Patel (Improving Customer)
 
 ### AC-006-05: Rationale References Specific State Values
-- **Given** John Smith with `days_past_due = 45`, `preferred_channel = "mobile"`, `arrears_trajectory = "deteriorating"`
+- **Given** Priya Mehta with `days_past_due = 45`, `preferred_channel = "mobile"`, `arrears_trajectory = "deteriorating"`
 - **When** the NBA Agent generates a rationale
 - **Then** the `rationale` string contains at least two of: the DPD value (`45`), the trajectory label (`deteriorating`), the channel (`mobile`), or the risk segment (`high`)
 - **Verified by** Phase 6 unit test with substring assertions on rationale text
@@ -116,15 +116,15 @@
 - **Verified by** Phase 6 unit test asserting alternatives list length and structure
 
 ### AC-006-08: Written-Off Account Returns Correct Action
-- **Given** Karen Wilson (`CUST-006`) with `account_status = "written_off"`
+- **Given** Ananya Reddy (`CUST-008`) with `account_status = "legal"` and `default_probability > 0.85`
 - **When** the NBA Agent runs
-- **Then** `nba_recommendation.action = "flag_for_writeoff"`
+- **Then** `nba_recommendation.action = "escalate_to_legal"`
 - **Verified by** Phase 11 named-scenario integration test for Karen Wilson
 
 ### AC-006-09: NBA Completes Within Latency Budget
 - **Given** a standard pipeline run
 - **When** the NBA Agent (Stage 3, Groq Llama 3.3 70B) runs
-- **Then** NBA Agent completes in < 5 seconds (p95)
+- **Then** NBA Agent completes in < 15 seconds (p95 — Groq free tier)
 - **Verified by** Grafana `agent_execution_duration_seconds{agent="nba"}` p95
 
 ---
@@ -136,4 +136,4 @@
 | **Requirements** | `REQUIREMENTS.md` §2.2.6 NBA Agent, §2.2.6 action catalogue (9 actions), §6.1 Stage 3, §6.2 Dispute Hold Path, §10.2 Screen 3 NBA Card |
 | **Deployment** | Render.com FastAPI; Groq free tier (`llama-3.3-70b-versatile` via `langchain-groq`) — see `docs/llm_provider_strategy.md` |
 | **Observability** | `nba_action_recommended_total{action}` counter (key business metric, Grafana Dashboard 2 pie chart); `agent_execution_duration_seconds{agent="nba"}` histogram (Stage 3 bottleneck); `stage3.nba` Tempo span with `nba.action`, `nba.confidence`, `nba.blocked_by_dispute` attributes; `nba_recommended` INFO Loki event |
-| **SRE** | NBA recommendation rate SLO ≥ 98% of completed workflows; p95 latency for NBA ≤ 5s; reasoning-intensive agent (free via Groq) — Opus 4.8 token spend tracked via `llm_tokens_used_total{agent="nba",model="llama-3.3-70b-versatile"}`; NBA failure = `human_review` pipeline status |
+| **SRE** | NBA recommendation rate SLO ≥ 98% of completed workflows; p95 latency for NBA ≤ 5s; primary synthesis agent (free via Groq — llama-3.3-70b-versatile) — Opus 4.8 token spend tracked via `llm_tokens_used_total{agent="nba",model="llama-3.3-70b-versatile"}`; NBA failure = `human_review` pipeline status |

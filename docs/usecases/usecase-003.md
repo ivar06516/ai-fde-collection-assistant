@@ -10,7 +10,7 @@
 | **Priority** | P0 |
 | **Delivery Phase** | Phase 3 |
 | **Pipeline Stage** | Stage 1 — parallel with UC-002 |
-| **Model** | `llama-3.3-70b-versatile` |
+| **Model** | `llama-3.3-70b-versatile` (Groq — free) |
 
 ---
 
@@ -81,7 +81,7 @@
 - **Verified by** Phase 3 unit test checking on_time mapping
 
 ### AC-003-05: Special Account Statuses Do Not Block Pipeline
-- **Given** an account with `account_status = "written_off"` (mocked) or `account_status = "legal"` (CUST-008 Isabella Garcia / ACC-008, DPD 120)
+- **Given** an account with `account_status = "written_off"` (mocked) or `account_status = "legal"` (CUST-008 Ananya Reddy / ACC-008, DPD 120)
 - **When** the Account Profile Agent runs
 - **Then** `state.account_profile.account_status` reflects the DB value exactly; pipeline continues to NBA Agent without error; NBA routes to `flag_for_writeoff` (written_off) or `escalate_to_legal` (legal)
 - **Verified by** unit test `test_account_profile_agent.py::test_special_statuses_do_not_block`

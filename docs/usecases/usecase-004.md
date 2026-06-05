@@ -17,7 +17,7 @@
 ## Preconditions
 
 - `state.customer_profile` and `state.account_profile` are populated (Stage 1 complete)
-- `account_profile.payment_history` contains ≥ 3 months of data
+- `account_profile.payment_history` list contains ≥ 3 months of data
 - Stage 2 parallel execution started alongside UC-005
 
 ---
@@ -75,7 +75,7 @@
 - **Verified by** unit test `test_arrears_prediction_agent.py::test_deteriorating_dpd_forecast_increases`
 
 ### AC-004-04: Improving Account Shows Decreasing or Stable DPD Forecast
-- **Given** Emma Patel (`CUST-004`, overdraft, DPD 35, hardship) with recent on-time payments
+- **Given** Kavita Patel (`CUST-004`, overdraft, DPD 35, hardship/unemployment) with recent on-time payments
 - **When** `calculate_arrears_trajectory` tool runs with `trend="improving"`
 - **Then** `arrears_trajectory = "improving"` and `predicted_dpd_30 ≤ current_dpd`
 - **Verified by** unit test `test_arrears_prediction_agent.py::test_improving_dpd_forecast_stable_or_decreasing`
@@ -113,4 +113,4 @@
 | **Requirements** | `REQUIREMENTS.md` §2.2.4 Arrears Prediction Agent, §6.1 Stage 2, §10.2 Screen 3 Arrears Card, §Q8 (resolved — 3 chart types) |
 | **Deployment** | Render.com FastAPI; Groq API (free, `llama-3.3-70b-versatile`); no additional DB query (uses Stage 1 state) |
 | **Observability** | `arrears_trajectory_distribution{trajectory}` counter (key portfolio-health business metric); `agent_execution_duration_seconds{agent="arrears_prediction"}` histogram; `stage2.arrears_prediction` Tempo span with `arrears.trajectory` + `arrears.default_probability` attributes; Grafana Dashboard 3 Business Metrics |
-| **SRE** | Agent error rate SLO ≤ 2%; p95 target < 3s for this agent; NBA recommendation quality degrades if this agent fails — treated as P2 impact even in partial failure |
+| **SRE** | Agent error rate SLO ≤ 2%; p95 target < 15s for this agent (Groq free tier); NBA recommendation quality degrades if this agent fails — treated as P2 impact even in partial failure |
