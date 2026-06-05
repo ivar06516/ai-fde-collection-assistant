@@ -25,9 +25,7 @@ st.markdown("""<style>@keyframes spin{to{transform:rotate(360deg)}}</style>""", 
 
 # ── Imports ────────────────────────────────────────────────────────────────────
 from ui.components.arrears_card import render_arrears_card
-from ui.components.account_card import render_account_card
 from ui.components.audit_panel import render_audit_panel
-from ui.components.customer_card import render_customer_card
 from ui.components.customer_profile_page import render_customer_profile_page
 from ui.components.dashboard import render_dashboard
 from ui.components.dispute_card import render_dispute_card
@@ -269,10 +267,12 @@ elif st.session_state.page == "analysis":
             st.markdown('<hr style="border:none;border-top:2px dashed #E8E8E8;margin:0.8rem 0 1rem">',
                         unsafe_allow_html=True)
 
-        cp  = agent_statuses.get("customer_profile",{}).get("status") == "completed"
-        ap  = agent_statuses.get("account_profile",{}).get("status") == "completed"
+        # Page 2 shows ONLY Stage 2 + Stage 3 agent results.
+        # Customer Profile and Account Profile cards are on Page 3 only.
         arr = agent_statuses.get("arrears_prediction",{}).get("status") == "completed"
         dis = agent_statuses.get("dispute",{}).get("status") == "completed"
+        s1_done = (agent_statuses.get("customer_profile",{}).get("status") == "completed"
+                   or agent_statuses.get("account_profile",{}).get("status") == "completed")
 
         def _placeholder(icon, label):
             st.markdown(
@@ -281,13 +281,7 @@ elif st.session_state.page == "analysis":
                 f'<div style="margin-top:0.4rem;font-size:0.85rem">{label}<br>Loading…</div></div>',
                 unsafe_allow_html=True)
 
-        if cp or ap:
-            c1, c2 = st.columns(2)
-            with c1:
-                render_customer_card(state.get("customer_profile") or {}) if cp else _placeholder("👤","Customer Profile")
-            with c2:
-                render_account_card(state.get("account_profile") or {}) if ap else _placeholder("🏦","Account Profile")
-
+        # Stage 2 results
         if arr or dis:
             c3, c4 = st.columns(2)
             with c3:
@@ -299,7 +293,7 @@ elif st.session_state.page == "analysis":
             with c4:
                 render_dispute_card(state.get("dispute_summary") or {}) if dis else _placeholder("⚖","Dispute Detection")
 
-        if not (cp or ap):
+        if not s1_done:
             st.markdown('<div style="text-align:center;padding:3rem;color:#aaa">'
                         '<div style="font-size:3rem">⚙</div>'
                         '<div style="font-size:1rem;font-weight:600;margin-top:0.5rem">Pipeline Running</div>'
