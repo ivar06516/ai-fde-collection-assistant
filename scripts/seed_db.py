@@ -309,7 +309,7 @@ def make_interactions(session: Session, customer_id: str, account_id: str, count
         session.add(ih)
 
 
-def seed(session: Session) -> None:
+def seed(session: Session, random_count: int = 90, scenarios_only: bool = False) -> None:
     # Seed 10 named Indian scenarios
     for (cid, first, last, risk, hf, hr, aid, product, status, bal, orig, dpd, has_disp, hold) in NAMED_SCENARIOS:
         make_customer(session, cid, first, last, risk, hf, hr)
@@ -318,6 +318,11 @@ def seed(session: Session) -> None:
         if has_disp:
             make_dispute(session, aid, cid, hold, "identity_theft" if cid == "CUST-002" else None)
         make_interactions(session, cid, aid, random.randint(3, 8))
+
+    if scenarios_only:
+        session.commit()
+        print("Seeded: 10 named scenarios only (--scenarios-only)")
+        return
 
     # AC-005-03: CUST-007 Suresh Kumar needs 2 active disputes
     from datetime import date as _date, timedelta as _td
@@ -333,8 +338,8 @@ def seed(session: Session) -> None:
     ))
     session.flush()
 
-    # Seed 90 additional random Indian customers
-    for i in range(11, 101):
+    # Seed random Indian customers (count = random_count, default 90)
+    for i in range(11, 11 + random_count):
         cid = f"CUST-{i:03d}"
         aid = f"ACC-{i:03d}"
         risk = random.choice(RISK_SEGMENTS)
@@ -356,12 +361,17 @@ def seed(session: Session) -> None:
         make_interactions(session, cid, aid, random.randint(0, 6))
 
     session.commit()
-    print(f"Seeded: 100 Indian customers, 100 accounts")
+    total = 10 + random_count
+    print(f"Seeded: {total} customers ({10} named + {random_count} random), {total} accounts")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Seed SQLite DB with Indian synthetic data")
     parser.add_argument("--reset", action="store_true", help="Drop and recreate all tables first")
+    parser.add_argument("--count",  type=int, default=90,
+                        help="Number of random customers to generate (default: 90)")
+    parser.add_argument("--scenarios-only", action="store_true",
+                        help="Insert only the 10 named scenarios (no random customers)")
     args = parser.parse_args()
 
     engine = get_engine()
@@ -379,7 +389,9 @@ def main() -> None:
         if existing > 0 and not args.reset:
             print(f"DB already has {existing} customers. Use --reset to re-seed.")
             return
-        seed(session)
+        seed(session,
+             random_count=0 if args.scenarios_only else args.count,
+             scenarios_only=args.scenarios_only)
     print("Done.")
 
 
