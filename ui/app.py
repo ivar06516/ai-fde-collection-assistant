@@ -348,21 +348,20 @@ elif st.session_state.page == "analysis":
     wf_id   = st.session_state.workflow_id
     row     = st.session_state.get("pipeline_row") or {}
 
-    # Back button (breadcrumb already in header)
-    _, bc2 = st.columns([6, 1])
-    with bc2:
-        if st.button("← Dashboard"):
-            st.session_state.page = "dashboard"
-            st.rerun()
-
-    # Customer banner with View Profile link under the name
+    # Customer banner (full width)
     _customer_banner(row, wf_id)
-    ban_l, _ = st.columns([1, 5])
-    with ban_l:
-        if st.button("👤 View Customer Profile", key="view_profile_banner"):
+
+    # Action row — sits flush under the banner, no gap
+    a1, a2, a3 = st.columns([2, 4, 1])
+    with a1:
+        if st.button("👤 View Customer Profile", key="view_profile_banner", use_container_width=True):
             st.session_state.profile_customer_id = row.get("customer_id")
             st.session_state.profile_detail = None
             st.session_state.page = "profile"
+            st.rerun()
+    with a3:
+        if st.button("← Dashboard", use_container_width=True):
+            st.session_state.page = "dashboard"
             st.rerun()
 
     # State: live pipeline polls API; replay loads stored state from session
