@@ -139,6 +139,66 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         st.info("No customers match the current filters.")
         return
 
+    # ── Pagination ────────────────────────────────────────────────────────────
+    PAGE_SIZE = 15
+    total_filtered = len(filtered)
+    total_pages = max(1, -(-total_filtered // PAGE_SIZE))  # ceil division
+
+    # Reset to page 1 whenever filters change (track filter fingerprint)
+    filter_key = f"{search}|{risk_filter}|{status_filter}|{product_filter}|{hold_filter}|{dpd_filter}"
+    if st.session_state.get("_dash_filter_key") != filter_key:
+        st.session_state["_dash_filter_key"] = filter_key
+        st.session_state["dash_page"] = 1
+
+    page = st.session_state.get("dash_page", 1)
+    page = max(1, min(page, total_pages))  # clamp
+    st.session_state["dash_page"] = page
+
+    start_idx = (page - 1) * PAGE_SIZE
+    end_idx   = min(start_idx + PAGE_SIZE, total_filtered)
+    page_rows = filtered[start_idx:end_idx]
+
+    # Pagination bar — row count left, page controls right
+    pg1, pg2 = st.columns([4, 3])
+    with pg1:
+        st.markdown(
+            f'<div style="font-size:0.82rem;color:#888;padding-top:6px">'
+            f'Showing <b>{start_idx+1}–{end_idx}</b> of <b>{total_filtered}</b> customers'
+            + (f' (page {page} of {total_pages})' if total_pages > 1 else '') +
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with pg2:
+        if total_pages > 1:
+            btn_cols = st.columns([1, 1, 4, 1, 1])
+            with btn_cols[0]:
+                if st.button("«", disabled=(page == 1), key="pg_first", help="First page"):
+                    st.session_state["dash_page"] = 1; st.rerun()
+            with btn_cols[1]:
+                if st.button("‹", disabled=(page == 1), key="pg_prev", help="Previous page"):
+                    st.session_state["dash_page"] = page - 1; st.rerun()
+            with btn_cols[2]:
+                # Inline page number selector
+                max_show = min(total_pages, 7)
+                half = max_show // 2
+                p_start = max(1, min(page - half, total_pages - max_show + 1))
+                p_end   = min(p_start + max_show, total_pages + 1)
+                page_btns = st.columns(p_end - p_start)
+                for i, pg_n in enumerate(range(p_start, p_end)):
+                    with page_btns[i]:
+                        style = "primary" if pg_n == page else "secondary"
+                        if st.button(str(pg_n), key=f"pg_{pg_n}", type=style,
+                                     use_container_width=True):
+                            st.session_state["dash_page"] = pg_n; st.rerun()
+            with btn_cols[3]:
+                if st.button("›", disabled=(page == total_pages), key="pg_next", help="Next page"):
+                    st.session_state["dash_page"] = page + 1; st.rerun()
+            with btn_cols[4]:
+                if st.button("»", disabled=(page == total_pages), key="pg_last", help="Last page"):
+                    st.session_state["dash_page"] = total_pages; st.rerun()
+
+    st.markdown('<div style="margin-top:4px"></div>', unsafe_allow_html=True)
+
     # Column headers
     h_cols = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 2, 2])
     for col_widget, label in zip(h_cols, ["Customer", "Risk", "Product", "Status",
@@ -150,8 +210,8 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 f'padding-bottom:4px;border-bottom:2px solid #E0E0E0">{label}</div>',
                 unsafe_allow_html=True)
 
-    # Customer rows
-    for row in filtered:
+    # Customer rows — current page only
+    for row in page_rows:
         cid     = row["customer_id"]
         aid     = row["account_id"]
         name    = row["full_name"]
