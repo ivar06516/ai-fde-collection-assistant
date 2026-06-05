@@ -18,7 +18,7 @@ st.set_page_config(
 
 css_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "styles.css")
 if os.path.exists(css_path):
-    with open(css_path) as f:
+    with open(css_path, encoding='utf-8') as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 st.markdown("""<style>
@@ -58,13 +58,43 @@ RISK_STYLE = {
     "high":"background:#FFEBEE;color:#C62828","hardship":"background:#EDE7F6;color:#4527A0",
 }
 
-# ── Global header ──────────────────────────────────────────────────────────────
-st.markdown("""<div style="background:#1A1A1A;padding:0.65rem 1.5rem;border-radius:8px;
-margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
-<span style="color:#A100FF;font-size:1.2rem;font-weight:800">Accenture</span>
-<span style="color:#555">|</span>
-<span style="color:#ccc;font-size:0.9rem">AI FDE Collection Assistant</span>
-</div>""", unsafe_allow_html=True)
+# ── Global header with page navigation ────────────────────────────────────────
+def _render_header():
+    page = st.session_state.get("page", "dashboard")
+    row  = st.session_state.get("pipeline_row") or {}
+    cid  = st.session_state.get("profile_customer_id", "")
+
+    # Build breadcrumb
+    crumbs = [("🏠 Dashboard", "dashboard")]
+    if page == "analysis":
+        name = row.get("full_name", "")
+        crumbs.append((f"Analysis — {name}", "analysis"))
+    elif page == "profile":
+        portfolio = st.session_state.get("portfolio") or []
+        prof_row  = next((r for r in portfolio if r["customer_id"] == cid), {})
+        crumbs.append((f"Profile — {prof_row.get('full_name', cid)}", "profile"))
+
+    crumb_html = ""
+    for i, (label, target) in enumerate(crumbs):
+        is_active = (target == page)
+        sep = ' <span style="color:#555;margin:0 0.4rem">›</span> ' if i > 0 else ""
+        color = "#FFFFFF" if is_active else "#999999"
+        weight = "700" if is_active else "400"
+        crumb_html += f'{sep}<span style="color:{color};font-weight:{weight};font-size:0.85rem">{label}</span>'
+
+    st.markdown(
+        f'<div style="background:#1A1A1A;padding:0.6rem 1.5rem;border-radius:8px;'
+        f'margin-bottom:0.8rem;display:flex;align-items:center;gap:1.2rem">'
+        f'<span style="color:#A100FF;font-size:1.15rem;font-weight:800;letter-spacing:-0.5px">Accenture</span>'
+        f'<span style="color:#444;font-size:1rem">|</span>'
+        f'<span style="color:#888;font-size:0.85rem">AI FDE Collection Assistant</span>'
+        f'<span style="color:#444;margin:0 0.2rem">|</span>'
+        f'<nav style="display:flex;align-items:center">{crumb_html}</nav>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+_render_header()
 
 # ── Session state ──────────────────────────────────────────────────────────────
 for k, v in [
