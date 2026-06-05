@@ -79,3 +79,16 @@ def fetch_portfolio() -> list[dict]:
         return resp.json() if resp.status_code == 200 else []
     except Exception:
         return []
+
+
+def fetch_customer_detail(customer_id: str) -> dict | None:
+    """Fetch full customer detail for Page 3 — profile view."""
+    settings = get_settings()
+    try:
+        resp = httpx.get(
+            f"{settings.streamlit_api_url}/collections/data/customer/{customer_id}",
+            timeout=10,
+        )
+        return resp.json() if resp.status_code == 200 else None
+    except Exception:
+        return None

@@ -44,7 +44,7 @@ def _kpi(label, value, sub, color):
             f'<div style="font-size:0.75rem;color:#888;margin-top:0.3rem">{sub}</div></div>')
 
 
-def render_dashboard(portfolio, on_run_analysis):
+def render_dashboard(portfolio, on_run_analysis, on_view_customer=None):
     """Render the customer portfolio dashboard."""
     total        = len(portfolio)
     delinquent   = sum(1 for r in portfolio if r["account_status"] == "delinquent")
@@ -142,7 +142,7 @@ def render_dashboard(portfolio, on_run_analysis):
     # Column headers
     h_cols = st.columns([3, 1.5, 2, 1.5, 1, 2, 1.5, 1.5])
     for col_widget, label in zip(h_cols, ["Customer", "Risk", "Product", "Status",
-                                           "DPD", "Outstanding", "Hold", "Action"]):
+                                           "DPD", "Outstanding", "Hold", "Profile / Analyse"]):
         with col_widget:
             st.markdown(
                 f'<div style="font-size:0.72rem;font-weight:700;color:#888;'
@@ -201,11 +201,18 @@ def render_dashboard(portfolio, on_run_analysis):
                 st.markdown(_badge("No Hold", "background:#E8F5E9;color:#137333"),
                             unsafe_allow_html=True)
         with c8:
-            if st.button("Analyse", key=f"btn_{cid}_{aid}", use_container_width=True):
-                st.session_state.dash_selected = {
-                    "customer_id": cid, "account_id": aid, "name": name,
-                }
-                on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
+            sub1, sub2 = st.columns(2)
+            with sub1:
+                if st.button("Profile", key=f"view_{cid}", use_container_width=True):
+                    if on_view_customer:
+                        on_view_customer(cid)
+            with sub2:
+                if st.button("Analyse", key=f"btn_{cid}_{aid}", use_container_width=True,
+                             type="primary"):
+                    st.session_state.dash_selected = {
+                        "customer_id": cid, "account_id": aid, "name": name,
+                    }
+                    on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
 
         st.markdown(
             '<hr style="margin:2px 0;border:none;border-top:1px solid #F0F0F0">',

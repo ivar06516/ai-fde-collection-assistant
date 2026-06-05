@@ -228,6 +228,89 @@ async def get_portfolio() -> list:
         return result
 
 
+
+@router.get("/data/customer/{customer_id}")
+async def get_customer_detail(customer_id: str) -> dict:
+    """Full customer detail for Page 3 — customer profile view."""
+    from collection_assistant.db.models import Customer, Account, Dispute, InteractionHistory, PaymentHistory
+    with db_session() as session:
+        from collection_assistant.exceptions import CustomerNotFoundError
+        try:
+            from collection_assistant.db.queries.customer_queries import get_customer
+            c = get_customer(session, customer_id)
+        except CustomerNotFoundError:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail=f"Customer {customer_id} not found")
+
+        accounts = session.query(Account).filter(Account.customer_id == customer_id).all()
+        interactions = (session.query(InteractionHistory)
+                        .filter(InteractionHistory.customer_id == customer_id)
+                        .order_by(InteractionHistory.interaction_date.desc())
+                        .limit(10).all())
+        disputes = (session.query(Dispute)
+                    .filter(Dispute.customer_id == customer_id)
+                    .order_by(Dispute.opened_date.desc()).all())
+
+        from datetime import date
+        tenure_years = round((date.today() - c.relationship_since).days / 365.25, 1) if c.relationship_since else 0
+
+        accounts_data = []
+        for a in accounts:
+            ph = (session.query(PaymentHistory)
+                  .filter(PaymentHistory.account_id == a.account_id)
+                  .order_by(PaymentHistory.payment_month.desc())
+                  .limit(12).all())
+            on_time = sum(1 for p in ph if p.on_time)
+            accounts_data.append({
+                "account_id": a.account_id,
+                "product_type": a.product_type,
+                "account_status": a.account_status,
+                "outstanding_balance": a.outstanding_balance,
+                "original_balance": a.original_balance,
+                "days_past_due": a.days_past_due or 0,
+                "on_time_rate": round(on_time / len(ph), 2) if ph else 1.0,
+                "missed_last_6m": sum(1 for p in ph[:6] if not p.on_time),
+                "last_payment_date": str(a.last_payment_date) if a.last_payment_date else None,
+                "last_payment_amount": a.last_payment_amount,
+                "payment_history": [
+                    {"month": p.payment_month, "amount_due": p.amount_due,
+                     "amount_paid": p.amount_paid, "on_time": bool(p.on_time)}
+                    for p in ph
+                ],
+            })
+
+        return {
+            "customer_id": c.customer_id,
+            "full_name": f"{c.first_name} {c.last_name}",
+            "age": c.age,
+            "gender": c.gender,
+            "email": c.email,
+            "mobile_number": c.mobile_number,
+            "city": c.city,
+            "state": c.state,
+            "employment_status": c.employment_status,
+            "annual_income": c.annual_income,
+            "relationship_since": str(c.relationship_since),
+            "relationship_tenure_years": tenure_years,
+            "risk_segment": c.risk_segment,
+            "preferred_channel": c.preferred_channel,
+            "preferred_time": c.preferred_time,
+            "hardship_flag": bool(c.hardship_flag),
+            "hardship_reason": c.hardship_reason,
+            "accounts": accounts_data,
+            "interactions": [
+                {"type": i.interaction_type, "date": str(i.interaction_date),
+                 "outcome": i.outcome, "notes": i.agent_notes}
+                for i in interactions
+            ],
+            "disputes": [
+                {"dispute_id": d.dispute_id, "type": d.dispute_type, "status": d.status,
+                 "opened": str(d.opened_date), "resolved": str(d.resolved_date) if d.resolved_date else None,
+                 "collection_hold": bool(d.collection_hold), "description": d.description}
+                for d in disputes
+            ],
+        }
+
 @router.get("/data/customers")
 async def get_customers() -> list:
     with db_session() as session:
