@@ -114,33 +114,105 @@ for k, v in [
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### Navigation")
-    st.markdown("---")
-    provider = os.environ.get("LLM_PROVIDER","free_cloud")
-    icons = {"free_cloud":"🟢 Groq (Free)","local":"🟡 Ollama","premium":"🟣 Anthropic"}
-    st.info(f"LLM: **{icons.get(provider,provider)}**")
-    st.markdown("---")
-    if st.button("🏠 Dashboard", use_container_width=True,
-                 type="primary" if st.session_state.page=="dashboard" else "secondary"):
+
+    # ── App Identity ────────────────────────────────────────────────────────
+    st.markdown(
+        '<div style="padding:0.5rem 0 0.8rem">'
+        '<div style="color:#A100FF;font-size:1.1rem;font-weight:800;letter-spacing:-0.5px">Accenture</div>'
+        '<div style="color:#888;font-size:0.75rem;margin-top:1px">AI FDE Collection Assistant</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # LLM provider badge
+    provider = os.environ.get("LLM_PROVIDER", "free_cloud")
+    provider_labels = {"free_cloud": "🟢 Groq (Free)", "local": "🟡 Ollama (Local)", "premium": "🟣 Anthropic"}
+    provider_label = provider_labels.get(provider, provider)
+    st.markdown(
+        f'<div style="background:rgba(161,0,255,0.15);border:1px solid rgba(161,0,255,0.3);'
+        f'border-radius:8px;padding:0.4rem 0.8rem;margin-bottom:0.8rem">'
+        f'<div style="font-size:0.68rem;color:#888;font-weight:600;text-transform:uppercase;'
+        f'letter-spacing:0.05em;margin-bottom:2px">LLM Provider</div>'
+        f'<div style="color:#E0C8FF;font-weight:700;font-size:0.85rem">{provider_label}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Navigation ──────────────────────────────────────────────────────────
+    st.markdown(
+        '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
+        'letter-spacing:0.06em;margin-bottom:0.4rem">Navigation</div>',
+        unsafe_allow_html=True,
+    )
+
+    cur_page = st.session_state.page
+    portfolio = st.session_state.portfolio or []
+
+    # Dashboard link
+    dash_style = ("background:linear-gradient(135deg,#A100FF,#7B00CC);color:white;border:none;"
+                  if cur_page == "dashboard"
+                  else "background:#2D2D2D;color:#CCC;border:1px solid #444;")
+    if st.button("🏠  Dashboard", use_container_width=True,
+                 type="primary" if cur_page == "dashboard" else "secondary"):
         st.session_state.page = "dashboard"
         st.session_state.dash_selected = None
         st.rerun()
-    if st.session_state.page in ("analysis","profile"):
-        if st.session_state.page == "profile" and st.session_state.profile_customer_id:
-            row = next((r for r in (st.session_state.portfolio or [])
-                        if r["customer_id"]==st.session_state.profile_customer_id), {})
-            st.caption(f"Viewing: {row.get('full_name','Customer')}")
-    st.markdown("---")
-    if st.button("Seed Database"):
-        import subprocess
-        r = subprocess.run([sys.executable,"scripts/seed_db.py","--reset"],
-            capture_output=True,text=True,
-            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        st.success("Seeded!") if r.returncode==0 else st.error(r.stderr[:200])
-        st.session_state.portfolio = None
-    if st.button("Refresh Portfolio"):
+
+    # Analysis page link (only if an active or replay workflow exists)
+    if st.session_state.workflow_id:
+        row = st.session_state.get("pipeline_row") or {}
+        cust_name = row.get("full_name", "Analysis")
+        label = f"📊  Analysis"
+        if st.button(label, use_container_width=True,
+                     type="primary" if cur_page == "analysis" else "secondary"):
+            st.session_state.page = "analysis"
+            st.rerun()
+        if cust_name and cur_page == "analysis":
+            st.markdown(
+                f'<div style="font-size:0.72rem;color:#888;padding:1px 8px;'
+                f'margin-bottom:4px">↳ {cust_name}</div>',
+                unsafe_allow_html=True,
+            )
+
+    # Customer Profile link (only if one is loaded)
+    if st.session_state.profile_customer_id:
+        prof_row = next((r for r in portfolio if r["customer_id"] == st.session_state.profile_customer_id), {})
+        prof_name = prof_row.get("full_name", st.session_state.profile_customer_id)
+        if st.button("👤  Customer Profile", use_container_width=True,
+                     type="primary" if cur_page == "profile" else "secondary"):
+            st.session_state.page = "profile"
+            st.rerun()
+        if cur_page == "profile":
+            st.markdown(
+                f'<div style="font-size:0.72rem;color:#888;padding:1px 8px;'
+                f'margin-bottom:4px">↳ {prof_name}</div>',
+                unsafe_allow_html=True,
+            )
+
+    st.markdown('<div style="border-top:1px solid #333;margin:0.8rem 0"></div>',
+                unsafe_allow_html=True)
+
+    # ── Data Management ─────────────────────────────────────────────────────
+    st.markdown(
+        '<div style="font-size:0.68rem;color:#666;font-weight:700;text-transform:uppercase;'
+        'letter-spacing:0.06em;margin-bottom:0.4rem">Data Management</div>',
+        unsafe_allow_html=True,
+    )
+    if st.button("🔄  Refresh Portfolio", use_container_width=True):
         st.session_state.portfolio = None
         st.rerun()
+    if st.button("🌱  Seed Database", use_container_width=True):
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, "scripts/seed_db.py", "--reset"],
+            capture_output=True, text=True,
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        )
+        if r.returncode == 0:
+            st.success("Database re-seeded!")
+            st.session_state.portfolio = None
+        else:
+            st.error(r.stderr[:200])
 
 
 # ── Helper: customer banner (shared by Analysis page) ─────────────────────────
