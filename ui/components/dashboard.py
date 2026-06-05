@@ -132,12 +132,18 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         lo, hi = dpd_ranges[dpd_filter]
         filtered = [r for r in filtered if lo <= (r["days_past_due"] or 0) <= hi]
 
-    # Table header
-    h1, h2 = st.columns([4, 2])
+    # Table header with Clear All Filters
+    is_filtered = (search or risk_filter != "All Risk" or status_filter != "All Status"
+                   or product_filter != "All Products" or hold_filter != "All"
+                   or dpd_filter != "All DPD")
+
+    h1, h2, h3 = st.columns([3, 2, 1.5])
     with h1:
         st.markdown(
             f"**Customer List** &nbsp;"
-            f"<span style='color:#616161;font-size:0.85rem'>{len(filtered)} of {total} customers</span>",
+            f"<span style='color:#616161;font-size:0.85rem'>"
+            f"{len(filtered)} of {total} customers"
+            + (" — filtered" if is_filtered else "") + "</span>",
             unsafe_allow_html=True)
     with h2:
         sel = st.session_state.get("dash_selected")
@@ -146,6 +152,15 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                          use_container_width=True, key="run_selected_top"):
                 on_run_analysis(sel["customer_id"], sel["account_id"],
                                 st.session_state.get("dash_trigger", "routine_review"))
+    with h3:
+        if is_filtered:
+            if st.button("✕ Clear Filters", use_container_width=True,
+                         help="Reset all filters to show all 100 customers"):
+                for k in ["dash_search","dash_risk","dash_status",
+                           "dash_product","dash_hold","dash_dpd","dash_page"]:
+                    if k in st.session_state:
+                        del st.session_state[k]
+                st.rerun()
 
     if not filtered and total == 0:
         st.info(
@@ -154,7 +169,16 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         )
         return
     if not filtered:
-        st.info("No customers match the current filters. Try clearing one or more filters.")
+        if search:
+            st.info(
+                f'No customers match the search term "{search}". '
+                "Try a different name, Customer ID, or Account ID."
+            )
+        else:
+            st.info(
+                "No customers match the active filters. "
+                "Click **✕ Clear Filters** above to reset."
+            )
         return
 
     # ── Pagination ────────────────────────────────────────────────────────────
@@ -258,12 +282,9 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 unsafe_allow_html=True)
         with c2:
             rs = RISK_STYLE.get(risk, "background:#eee;color:#333")
-            risk_label = risk.upper() + (" ⚠" if hship else "")
+            risk_label = risk.upper()
             st.markdown(_badge(risk_label, rs), unsafe_allow_html=True)
-            if hship and hreason:
-                st.markdown(
-                    f'<div style="font-size:0.75rem;color:#4527A0;margin-top:2px">{hreason.title()}</div>',
-                    unsafe_allow_html=True)
+            
         with c3:
             st.markdown(_badge(prod, "background:#EDE7F6;color:#4527A0"), unsafe_allow_html=True)
         with c4:
@@ -299,7 +320,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 conf = lr.get("nba_confidence") or 0
                 run_at = (lr.get("run_at") or "")[:16]
                 st.markdown(
-                    f'<div style="font-size:0.75rem;font-weight:700;color:#A100FF">{action_label}</div>'
+                    f'<div style="font-size:0.75rem;font-weight:700;color:#6A0DAD">{action_label}</div>'
                     f'<div style="font-size:0.75rem;color:#616161">{conf:.0%} · {run_at}</div>',
                     unsafe_allow_html=True)
                 if st.button("↗ View Result", key=f"view_run_{cid}", use_container_width=True,
@@ -317,7 +338,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                     "customer_id": cid, "account_id": aid, "name": name,
                 }
                 on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
-            if st.button("Profile", key=f"view_{cid}", use_container_width=True):
+            if st.button("View Profile", key=f"view_{cid}", use_container_width=True):
                 if on_view_customer:
                     on_view_customer(cid)
 
@@ -334,7 +355,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
             st.markdown(
                 f'<div style="border:2px solid #A100FF;border-radius:10px;'
                 f'padding:0.8rem 1.2rem;background:#FAFAFA">'
-                f'<span style="color:#A100FF;font-weight:700">Selected: '
+                f'<span style="color:#6A0DAD;font-weight:700">Selected: '
                 f'{sel["name"]} ({sel["customer_id"]} / {sel["account_id"]})</span>'
                 f'</div>',
                 unsafe_allow_html=True)
@@ -357,3 +378,5 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 if st.button("Run Analysis", type="primary",
                              use_container_width=True, key="run_panel_btn"):
                     on_run_analysis(sel["customer_id"], sel["account_id"], trigger)
+
+

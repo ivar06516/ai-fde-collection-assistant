@@ -93,7 +93,20 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
 
     st.markdown("---")
 
+    # ── In-page anchor navigation ──────────────────────────────────────────
+    _SECTIONS = ["Overview", "Accounts", "Disputes", "Previous Runs", "Interactions"]
+    _ANCHORS  = ["overview", "accounts", "disputes", "prev_runs", "interactions"]
+    nav_html = ''.join([
+        f'<a href="#{a}" style="background:#F5F5F5;color:#6A0DAD;padding:4px 12px;'
+        f'border-radius:12px;font-size:0.78rem;font-weight:600;text-decoration:none;'
+        f'margin-right:6px;border:1px solid #E0E0E0">{s}</a>'
+        for s, a in zip(_SECTIONS, _ANCHORS)
+    ])
+    st.markdown(f'<div style="margin-bottom:1rem">{nav_html}</div>',
+                unsafe_allow_html=True)
+
     # ── Section 1: Demographics + Contact ─────────────────────────────────
+    st.markdown('<div id="overview"></div>', unsafe_allow_html=True)
     st.markdown("#### Customer Overview")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -113,6 +126,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
     st.markdown("")
 
     # ── Section 2: All Accounts ────────────────────────────────────────────
+    st.markdown('<div id="accounts"></div>', unsafe_allow_html=True)
     if accounts:
         st.markdown("#### Accounts")
         for acc in accounts:
@@ -161,6 +175,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
 
     # ── Section 3: Disputes ────────────────────────────────────────────────
     disputes = detail.get("disputes", [])
+    st.markdown('<div id="disputes"></div>', unsafe_allow_html=True)
     if disputes:
         st.markdown("#### Disputes")
         active   = [d for d in disputes if d["status"] in ("open","under_review","escalated")]
@@ -183,6 +198,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
             st.caption(f"✅ {len(resolved)} resolved dispute(s)")
 
     # ── Section 4: Previous Analysis Runs ────────────────────────────────
+    st.markdown('<div id="prev_runs"></div>', unsafe_allow_html=True)
     if runs:
         import streamlit as _st
         _st.markdown("#### Previous Analysis Runs")
@@ -229,6 +245,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
 
     # ── Section 5: Interaction History ────────────────────────────────────
     interactions = detail.get("interactions", [])
+    st.markdown('<div id="interactions"></div>', unsafe_allow_html=True)
     if interactions:
         st.markdown("#### Interaction History")
         for ix in interactions[:8]:

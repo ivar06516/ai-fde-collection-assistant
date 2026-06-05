@@ -104,7 +104,7 @@ footer                          { display:none !important; }
 .stButton > button[kind="secondary"],
 .stButton > button:not([kind]) {
   background: white !important;
-  color: var(--accent) !important;
+  color: #6A0DAD !important;
   border: 1.5px solid #DDD !important;
   border-radius: 7px !important;
   font-weight: 600 !important;

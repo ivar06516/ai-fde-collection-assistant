@@ -275,9 +275,7 @@ def _customer_banner(row: dict, wf_id: str = ""):
     rs     = RISK_STYLE.get(risk,"background:#eee;color:#333")
     dpd_c  = "#C62828" if dpd>60 else "#E65100" if dpd>30 else "#2E7D32"
     trigger = st.session_state.get("dash_trigger","routine_review").replace("_"," ").title()
-    wf_span = (f'<span style="margin-left:auto;font-family:monospace;background:#F3E5F5;color:#4A148C;'
-               f'padding:3px 10px;border-radius:8px;font-size:0.75rem;font-weight:700">Ref: {wf_id[:18]}</span>'
-               if wf_id else "")
+    wf_span = ""  # Workflow ID removed from banner — visible in Audit Trail
     st.markdown(
         f'<div style="background:#fff;border:1px solid #E0E0E0;border-radius:8px;'
         f'padding:0.7rem 1.2rem;margin-bottom:0.8rem;display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">'
@@ -431,12 +429,7 @@ elif st.session_state.page == "analysis":
     # Customer banner (full width)
     _customer_banner(row, wf_id or "")
 
-    # Profile link — under the customer banner
-    if st.button("👤 View Customer Profile", key="view_profile_banner"):
-        st.session_state.profile_customer_id = row.get("customer_id")
-        st.session_state.profile_detail = None
-        st.session_state.page = "profile"
-        st.rerun()
+
 
     # State: live pipeline polls API; replay loads stored state from session
     if st.session_state.get("workflow_mode") == "replay":
@@ -617,3 +610,5 @@ elif st.session_state.page == "profile":
 
     render_customer_profile_page(detail, go_to_analysis_from_profile,
                                   runs=profile_runs, on_view_run=go_to_replay_from_profile)
+
+
