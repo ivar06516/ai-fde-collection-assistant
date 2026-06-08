@@ -24,7 +24,7 @@ def run_audit_agent(state: CollectionWorkflowState) -> CollectionWorkflowState:
         elapsed_ms = int((datetime.now(timezone.utc) - started_at).total_seconds() * 1000)
 
         # AC-007-01/03: pass audit elapsed so it appears as the 6th lineage entry
-        audit_data = build_audit_record(workflow_id, state, audit_elapsed_ms=elapsed_ms)
+        audit_data = build_audit_record(workflow_id, state, audit_elapsed_ms=elapsed_ms)  # type: ignore[arg-type]
         state["audit_record"] = audit_data
 
         nba = state.get("nba_recommendation") or {}

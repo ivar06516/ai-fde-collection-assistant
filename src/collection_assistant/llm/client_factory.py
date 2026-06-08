@@ -1,4 +1,5 @@
 from langchain_core.language_models import BaseChatModel
+from pydantic import SecretStr
 
 from collection_assistant.config import LLMProvider, Settings
 
@@ -50,7 +51,7 @@ def get_llm(agent_name: str, settings: Settings) -> BaseChatModel:
 
     if provider == LLMProvider.FREE_CLOUD:
         from langchain_groq import ChatGroq
-        return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
+        return ChatGroq(model=model_id, api_key=SecretStr(settings.groq_api_key or ""), temperature=0)
 
     if provider == LLMProvider.LOCAL:
         from langchain_ollama import ChatOllama
@@ -59,4 +60,4 @@ def get_llm(agent_name: str, settings: Settings) -> BaseChatModel:
     # premium or hybrid
     # Groq handles all modes in PoC (premium/hybrid are future upgrade paths)
     from langchain_groq import ChatGroq
-    return ChatGroq(model=model_id, api_key=settings.groq_api_key, temperature=0)
+    return ChatGroq(model=model_id, api_key=SecretStr(settings.groq_api_key or ""), temperature=0)

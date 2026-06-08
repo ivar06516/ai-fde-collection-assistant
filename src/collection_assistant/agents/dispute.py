@@ -68,7 +68,7 @@ def run_dispute_agent(state: CollectionWorkflowState) -> CollectionWorkflowState
             if not d.get("dispute_type") or d.get("dispute_type") == "billing_error":
                 desc = d.get("description") or ""
                 d["dispute_type"] = classify_dispute_type(desc)
-            tl = next((t for t in timeline if t["dispute_id"] == d["dispute_id"]), {})
+            tl: dict = next((t for t in timeline if t["dispute_id"] == d["dispute_id"]), {})
             d["days_open"] = tl.get("days_open", 0)
             d["escalated"] = tl.get("escalated", False)
 
@@ -89,7 +89,7 @@ PRE-CALCULATED VALUES (copy these exactly into your JSON output):
         ])
 
         from collection_assistant.agents import parse_llm_json
-        content = parse_llm_json(response.content)
+        content = parse_llm_json(str(response.content))
 
         summary = json.loads(content)
 

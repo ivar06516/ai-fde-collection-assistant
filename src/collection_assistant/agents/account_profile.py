@@ -83,7 +83,7 @@ IMPORTANT — copy these values exactly:
         ])
 
         from collection_assistant.agents import parse_llm_json
-        content = parse_llm_json(response.content)
+        content = parse_llm_json(str(response.content))
 
         profile = json.loads(content)
 

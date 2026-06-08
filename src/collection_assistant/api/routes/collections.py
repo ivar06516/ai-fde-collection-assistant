@@ -59,10 +59,10 @@ def _run_pipeline_with_events(workflow_id: str, customer_id: str,
         })
     except (CustomerNotFoundError, AccountNotFoundError) as e:
         event_bus.emit(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
-        _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}
+        _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}  # type: ignore[typeddict-item]
     except Exception as e:
         event_bus.emit(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
-        _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}
+        _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}  # type: ignore[typeddict-item]
 
 
 @router.post("/recommend", response_model=RecommendResponse, status_code=202)
@@ -80,7 +80,7 @@ async def recommend(req: RecommendRequest, background_tasks: BackgroundTasks) ->
 
     workflow_id = f"wf-{uuid.uuid4().hex[:12]}"
     event_bus.register(workflow_id)
-    _workflow_store[workflow_id] = {"workflow_status": "in_progress"}
+    _workflow_store[workflow_id] = {"workflow_status": "in_progress"}  # type: ignore[typeddict-item]
     _evict_oldest_workflow()
 
     background_tasks.add_task(
@@ -100,7 +100,7 @@ async def stream_workflow(workflow_id: str) -> StreamingResponse:
         from collection_assistant.config import get_settings
         seen = 0
         max_wait = get_settings().agent_timeout_seconds * 6  # m-3 fix: configurable timeout
-        waited = 0
+        waited: float = 0.0
         while waited < max_wait:
             events = event_bus.get_events(workflow_id)
             while seen < len(events):
@@ -130,7 +130,7 @@ async def get_workflow_state(workflow_id: str) -> dict:
     state = _workflow_store.get(workflow_id)
     if not state:
         raise HTTPException(status_code=404, detail="Workflow not found")
-    return state
+    return state  # type: ignore[return-value]
 
 
 @router.get("/{workflow_id}/audit")
@@ -191,7 +191,7 @@ async def get_portfolio() -> list:
                 holds[d.account_id] = True
                 hold_reasons[d.account_id] = f"{d.dispute_type.replace('_',' ').title()} ({d.dispute_id})"
 
-        dispute_counts = {}
+        dispute_counts: dict[str, int] = {}
         for d in active_disputes:
             dispute_counts[d.account_id] = dispute_counts.get(d.account_id, 0) + 1
 
@@ -223,7 +223,7 @@ async def get_portfolio() -> list:
         result = []
         for c, a in rows:
             dpd = a.days_past_due or 0
-            lr = last_run_map.get(c.customer_id)
+            last_run: dict | None = last_run_map.get(c.customer_id)
             result.append({
                 "customer_id":       c.customer_id,
                 "account_id":        a.account_id,
@@ -248,7 +248,7 @@ async def get_portfolio() -> list:
                     "31-60"   if dpd <= 60 else
                     "61-90"   if dpd <= 90 else "90+"
                 ),
-                "last_run": lr,
+                "last_run": last_run,
             })
         return result
 

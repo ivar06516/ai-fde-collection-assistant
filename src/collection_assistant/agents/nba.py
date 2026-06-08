@@ -108,7 +108,7 @@ TRIGGER CONTEXT: {state.get('trigger_context', 'routine_review')}"""
         ])
 
         from collection_assistant.agents import parse_llm_json
-        content = parse_llm_json(response.content)
+        content = parse_llm_json(str(response.content))
 
         recommendation = json.loads(content)
 
