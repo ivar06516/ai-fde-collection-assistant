@@ -6,11 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from collection_assistant.api.routes.collections import router as collections_router
 from collection_assistant.api.routes.health import router as health_router
+from collection_assistant.config import get_settings
 from collection_assistant.db.session import create_all_tables
+from collection_assistant.observability import setup_observability
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_observability(get_settings())
     create_all_tables()
     yield
 
@@ -36,7 +39,6 @@ app.include_router(collections_router)
 
 if __name__ == "__main__":
     import uvicorn
-    from collection_assistant.config import get_settings
     settings = get_settings()
     uvicorn.run("collection_assistant.api.main:app", host=settings.api_host,
                 port=settings.api_port, reload=True)

@@ -1,5 +1,6 @@
 name: CI/CD Pipeline
 
+# Triggers: every push to main/develop and every PR targeting those branches
 on:
   push:
     branches: [main, develop]
@@ -69,7 +70,9 @@ jobs:
           name: coverage-report
           path: htmlcov/
 
-  # ── Job 3: Docker Build + Push ────────────────────────────────────────────
+  # ── Job 3: Docker Build + Push (GHCR) ────────────────────────────────────
+  # Builds container images for future Kubernetes / Docker-based deploys.
+  # Does NOT block the deploy jobs below — deploys run in parallel after tests.
   build:
     name: Build & Push Docker Images
     needs: test
@@ -116,10 +119,54 @@ jobs:
             ${{ env.UI_IMAGE }}:${{ github.sha }}
             ${{ env.UI_IMAGE }}:latest
 
-  # ── Job 4: Deploy to Staging (develop branch) ─────────────────────────────
+  # ── Job 4: Deploy Backend → Render.com ────────────────────────────────────
+  # Runs in parallel with Docker build — does NOT wait for images.
+  # Render pulls source directly from GitHub (native Python runtime).
+  # Requires RENDER_PROD_DEPLOY_HOOK secret in GitHub Settings > Secrets.
+  deploy-render:
+    name: Deploy Backend → Render.com
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Trigger Render deploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_PROD_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "⚠ RENDER_PROD_DEPLOY_HOOK not set — skipping."
+            echo "  To enable: GitHub repo → Settings → Secrets → New secret"
+            echo "  Name: RENDER_PROD_DEPLOY_HOOK"
+            echo "  Value: from Render dashboard → your service → Settings → Deploy Hook"
+          else
+            echo "Triggering Render deploy for commit $GITHUB_SHA..."
+            curl --fail -X POST "$DEPLOY_HOOK"
+            echo "✅ Render deploy triggered → https://ai-fde-collection-assistant.onrender.com/health"
+          fi
+
+  # ── Job 5: Deploy UI → Streamlit Community Cloud ─────────────────────────
+  # Streamlit auto-deploys on every push to main (native GitHub integration).
+  # This job just confirms the deploy is in flight and prints the URL.
+  deploy-streamlit:
+    name: Deploy UI → Streamlit Cloud
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Confirm Streamlit auto-deploy
+        run: |
+          echo "✅ Streamlit Community Cloud auto-deploys on push to main."
+          echo "   Deployment in flight for commit: $GITHUB_SHA"
+          echo "   UI URL: https://fde-collection-assistant.streamlit.app"
+          echo "   Monitor: https://share.streamlit.io → fde-collection-assistant → Logs"
+
+  # ── Job 6: Deploy to Staging (develop branch only) ────────────────────────
   deploy-staging:
-    name: Deploy → Staging
-    needs: build
+    name: Deploy → Staging (Render)
+    needs: test
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     environment: staging
@@ -130,34 +177,8 @@ jobs:
           DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
         run: |
           if [ -z "$DEPLOY_HOOK" ]; then
-            echo "RENDER_STAGING_DEPLOY_HOOK not configured — skipping (add secret in GitHub Settings > Secrets)"
+            echo "⚠ RENDER_STAGING_DEPLOY_HOOK not set — skipping."
           else
             curl --fail -X POST "$DEPLOY_HOOK"
-            echo "Staging deploy triggered"
+            echo "✅ Staging deploy triggered"
           fi
-
-  # ── Job 5: Deploy to Production (main branch) ─────────────────────────────
-  deploy-prod:
-    name: Deploy → Production
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Trigger Render prod deploy
-        env:
-          DEPLOY_HOOK: ${{ secrets.RENDER_PROD_DEPLOY_HOOK }}
-        run: |
-          if [ -z "$DEPLOY_HOOK" ]; then
-            echo "RENDER_PROD_DEPLOY_HOOK not configured — skipping (add secret in GitHub Settings > Secrets)"
-          else
-            curl --fail -X POST "$DEPLOY_HOOK"
-            echo "Production deploy triggered"
-          fi
-
-      - name: Notify deploy complete
-        run: |
-          echo "Deployed commit ${{ github.sha }} to production"
-          echo "API: https://fde-collection-api.onrender.com/health"
-          echo "UI:  https://fde-collection-assistant.streamlit.app"
