@@ -87,7 +87,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
             "dispute_raised","payment_arrangement_review","legal_referral_review",
         ], format_func=lambda x: x.replace("_"," ").title(),
            key="profile_trigger", label_visibility="collapsed")
-        if st.button("▶ Run AI Analysis", type="primary", use_container_width=True):
+        if st.button("▶ Run AI Analysis", type="primary", width='stretch'):
             if chosen_acc:
                 on_run_analysis(detail["customer_id"], chosen_acc["account_id"], trigger)
 
@@ -100,7 +100,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
     for col, section in zip(nav_cols, _SECTIONS):
         with col:
             is_active = (active_section == section)
-            if st.button(section, key=f"prof_sec_{section}", use_container_width=True,
+            if st.button(section, key=f"prof_sec_{section}", width='stretch',
                          type="primary" if is_active else "secondary"):
                 st.session_state["profile_section"] = section
                 st.rerun()
@@ -167,7 +167,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
 
                     ph = acc.get("payment_history", [])
                     if ph:
-                        st.plotly_chart(_payment_chart(ph), use_container_width=True)
+                        st.plotly_chart(_payment_chart(ph), width='stretch')
         else:
             st.info("No accounts found for this customer.")
 
@@ -237,7 +237,7 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
                         f'<div style="font-size:0.82rem;color:#616161">{ms/1000:.1f}s</div>',
                         unsafe_allow_html=True)
                 with cols[4]:
-                    if st.button("View", key=f"run_view_{wf_id}", use_container_width=True):
+                    if st.button("View", key=f"run_view_{wf_id}", width='stretch'):
                         if on_view_run:
                             on_view_run(wf_id, detail["customer_id"])
                 st.markdown('<hr style="border:none;border-top:1px solid #F5F5F5;margin:2px 0">',

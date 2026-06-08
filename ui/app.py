@@ -157,7 +157,7 @@ with st.sidebar:
     dash_style = ("background:linear-gradient(135deg,#A100FF,#7B00CC);color:white;border:none;"
                   if cur_page == "dashboard"
                   else "background:#2D2D2D;color:#CCC;border:1px solid #444;")
-    if st.button("🏠  Dashboard", use_container_width=True,
+    if st.button("🏠  Dashboard", width='stretch',
                  type="primary" if cur_page == "dashboard" else "secondary"):
         st.session_state.page = "dashboard"
         st.session_state.dash_selected = None
@@ -168,7 +168,7 @@ with st.sidebar:
         row = st.session_state.get("pipeline_row") or {}
         cust_name = row.get("full_name", "Analysis")
         label = f"📊  Analysis"
-        if st.button(label, use_container_width=True,
+        if st.button(label, width='stretch',
                      type="primary" if cur_page == "analysis" else "secondary"):
             st.session_state.page = "analysis"
             st.rerun()
@@ -183,7 +183,7 @@ with st.sidebar:
     if st.session_state.profile_customer_id:
         prof_row = next((r for r in portfolio if r["customer_id"] == st.session_state.profile_customer_id), {})
         prof_name = prof_row.get("full_name", st.session_state.profile_customer_id)
-        if st.button("👤  Customer Profile", use_container_width=True,
+        if st.button("👤  Customer Profile", width='stretch',
                      type="primary" if cur_page == "profile" else "secondary"):
             st.session_state.page = "profile"
             st.rerun()
@@ -213,7 +213,7 @@ with st.sidebar:
     for label, cid, aid, trigger, tooltip in DEMO_SCENARIOS:
         is_last = (cid == last_demo_cid)
         btn_label = f"{'▶ ' if is_last else ''}{label}"
-        if st.button(btn_label, use_container_width=True, help=tooltip, key=f"demo_{cid}",
+        if st.button(btn_label, width='stretch', help=tooltip, key=f"demo_{cid}",
                      type="primary" if is_last else "secondary"):
             if st.session_state.page == "dashboard" and st.session_state.portfolio:
                 row = next((r for r in st.session_state.portfolio if r["customer_id"] == cid), {})
@@ -239,16 +239,16 @@ with st.sidebar:
         'letter-spacing:0.06em;margin-bottom:0.4rem">Data Management</div>',
         unsafe_allow_html=True,
     )
-    if st.button("🔄  Refresh Portfolio", use_container_width=True):
+    if st.button("🔄  Refresh Portfolio", width='stretch'):
         st.session_state.portfolio = None
         st.rerun()
-    if st.button("🌱  Reset & Reseed Database", use_container_width=True):
+    if st.button("🌱  Reset & Reseed Database", width='stretch'):
         st.session_state["_confirm_seed"] = True
     if st.session_state.get("_confirm_seed"):
         st.warning("This will delete **all existing data and run history**. Continue?")
         col_yes, col_no = st.columns(2)
         with col_yes:
-            if st.button("Yes, Reset", type="primary", use_container_width=True, key="confirm_yes"):
+            if st.button("Yes, Reset", type="primary", width='stretch', key="confirm_yes"):
                 st.session_state["_confirm_seed"] = False
                 import subprocess
                 r = subprocess.run(
@@ -263,7 +263,7 @@ with st.sidebar:
                     st.error("Seed failed. Check that the server is running correctly.")
                     st.caption(r.stderr[:120])
         with col_no:
-            if st.button("Cancel", use_container_width=True, key="confirm_no"):
+            if st.button("Cancel", width='stretch', key="confirm_no"):
                 st.session_state["_confirm_seed"] = False
                 st.rerun()
 
@@ -518,7 +518,7 @@ elif st.session_state.page == "analysis":
                 nx1, nx2, _ = st.columns([2.2, 2.2, 2])
                 with nx1:
                     if st.button("👤 View Customer Profile", key="next_profile",
-                                 use_container_width=True,
+                                 width='stretch',
                                  help="See demographics, accounts, payment history"):
                         st.session_state.profile_customer_id = row.get("customer_id")
                         st.session_state.profile_detail = None
@@ -526,7 +526,7 @@ elif st.session_state.page == "analysis":
                         st.rerun()
                 with nx2:
                     if st.button("← Dashboard", key="next_back",
-                                 use_container_width=True,
+                                 width='stretch',
                                  help="Return to portfolio to analyse another customer"):
                         st.session_state.page = "dashboard"
                         st.rerun()

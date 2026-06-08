@@ -119,7 +119,7 @@ def render_arrears_card(prediction: dict, current_dpd: int = 0) -> None:
     with tab1:
         st.plotly_chart(
             _gauge_chart(prediction.get("default_probability", 0)),
-            use_container_width=True,
+            width='stretch',
         )
     with tab2:
         st.plotly_chart(
@@ -129,12 +129,12 @@ def render_arrears_card(prediction: dict, current_dpd: int = 0) -> None:
                 prediction.get("predicted_dpd_60", 0),
                 prediction.get("predicted_dpd_90", 0),
             ),
-            use_container_width=True,
+            width='stretch',
         )
     with tab3:
         factors = prediction.get("contributing_risk_factors", [])
         if factors:
-            st.plotly_chart(_risk_factors_bar_chart(factors), use_container_width=True)
+            st.plotly_chart(_risk_factors_bar_chart(factors), width='stretch')
         else:
             st.info("No significant risk factors identified")
 

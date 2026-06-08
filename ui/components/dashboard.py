@@ -149,12 +149,12 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
         sel = st.session_state.get("dash_selected")
         if sel:
             if st.button(f"Run Analysis for {sel['name']}", type="primary",
-                         use_container_width=True, key="run_selected_top"):
+                         width='stretch', key="run_selected_top"):
                 on_run_analysis(sel["customer_id"], sel["account_id"],
                                 st.session_state.get("dash_trigger", "routine_review"))
     with h3:
         if is_filtered:
-            if st.button("✕ Clear Filters", use_container_width=True,
+            if st.button("✕ Clear Filters", width='stretch',
                          help="Reset all filters to show all 100 customers"):
                 for k in ["dash_search","dash_risk","dash_status",
                            "dash_product","dash_hold","dash_dpd","dash_page"]:
@@ -230,7 +230,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                     with page_btns[i]:
                         style = "primary" if pg_n == page else "secondary"
                         if st.button(str(pg_n), key=f"pg_{pg_n}", type=style,
-                                     use_container_width=True):
+                                     width='stretch'):
                             st.session_state["dash_page"] = pg_n; st.rerun()
             with btn_cols[3]:
                 if st.button("›", disabled=(page == total_pages), key="pg_next", help="Next page"):
@@ -323,7 +323,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                     f'<div style="font-size:0.75rem;font-weight:700;color:#6A0DAD">{action_label}</div>'
                     f'<div style="font-size:0.75rem;color:#616161">{conf:.0%} · {run_at}</div>',
                     unsafe_allow_html=True)
-                if st.button("↗ View Result", key=f"view_run_{cid}", use_container_width=True,
+                if st.button("↗ View Result", key=f"view_run_{cid}", width='stretch',
                              help=f"Replay this {action_label} result in the Analysis page",
                              type="secondary"):
                     if on_view_run:
@@ -332,13 +332,13 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 st.markdown('<div style="font-size:0.75rem;color:#ccc">No runs yet</div>',
                             unsafe_allow_html=True)
         with c9:
-            if st.button("▶ Analyse", key=f"btn_{cid}_{aid}", use_container_width=True,
+            if st.button("▶ Analyse", key=f"btn_{cid}_{aid}", width='stretch',
                          type="primary"):
                 st.session_state.dash_selected = {
                     "customer_id": cid, "account_id": aid, "name": name,
                 }
                 on_run_analysis(cid, aid, st.session_state.get("dash_trigger", "routine_review"))
-            if st.button("View Profile", key=f"view_{cid}", use_container_width=True):
+            if st.button("View Profile", key=f"view_{cid}", width='stretch'):
                 if on_view_customer:
                     on_view_customer(cid)
 
@@ -376,7 +376,7 @@ def render_dashboard(portfolio, on_run_analysis, on_view_customer=None, on_view_
                 st.metric("Outstanding", f"${sel_row.get('outstanding_balance', 0):,.0f}")
             with sp5:
                 if st.button("Run Analysis", type="primary",
-                             use_container_width=True, key="run_panel_btn"):
+                             width='stretch', key="run_panel_btn"):
                     on_run_analysis(sel["customer_id"], sel["account_id"], trigger)
 
 
