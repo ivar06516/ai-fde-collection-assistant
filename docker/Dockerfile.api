@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -e .
 # Copy remaining runtime files
 COPY data/ data/
 COPY scripts/ scripts/
-COPY migrations/ migrations/
+# migrations/ is empty in PoC — Alembic migrations will be added in a future phase
 
 EXPOSE 8000
 
