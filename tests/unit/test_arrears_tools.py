@@ -1,5 +1,4 @@
 ﻿"""Legacy arrears tools tests — kept for regression, superseded by test_arrears_prediction_agent.py."""
-import pytest
 from collection_assistant.tools.arrears_tools import (
     analyse_payment_pattern,
     calculate_arrears_trajectory,

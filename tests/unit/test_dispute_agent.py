@@ -1,6 +1,4 @@
 ﻿"""UC-005: Dispute Agent — unit tests covering AC-005-01 through AC-005-07."""
-import time
-import pytest
 from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -48,7 +46,7 @@ class TestAC00501ActiveDisputeSetsHold:
     """AC-005-01: CUST-002 Sarah Jones identity_theft dispute → hold True."""
 
     def test_hold_true_when_active_dispute_has_flag(self):
-        dispute = _make_dispute_row(collection_hold=1)
+        _make_dispute_row(collection_hold=1)
         with patch("collection_assistant.tools.dispute_tools.db_session") as mock_ctx, \
              patch("collection_assistant.tools.dispute_tools.has_collection_hold",
                    return_value=(True, "identity_theft dispute (DISP-001) opened 2026-05-23")):
@@ -132,10 +130,6 @@ class TestAC00503MultipleDisputesListed:
 
     def test_any_hold_flag_triggers_summary_hold(self):
         # If either dispute has collection_hold=1, the summary hold should be True
-        disputes = [
-            _make_dispute_row("DISP-002", "fraud_claim", collection_hold=1),
-            _make_dispute_row("DISP-003", "billing_error", collection_hold=0),
-        ]
         with patch("collection_assistant.tools.dispute_tools.db_session") as mock_ctx, \
              patch("collection_assistant.tools.dispute_tools.has_collection_hold",
                    return_value=(True, "fraud_claim dispute (DISP-002)")):

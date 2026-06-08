@@ -60,7 +60,9 @@ class TestAC00902DisputeHoldScenario:
     """AC-009-02: Priya Mehta CUST-002 has active dispute hold in DB."""
 
     def test_priya_mehta_has_collection_hold(self):
-        import sys, os; sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
         from collection_assistant.db.session import db_session
         from collection_assistant.db.queries.dispute_queries import has_collection_hold
         with db_session() as session:

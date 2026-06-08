@@ -2,14 +2,13 @@
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
 from typing import AsyncIterator
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from collection_assistant.db.queries.account_queries import get_account, get_accounts_for_customer, list_accounts
+from collection_assistant.db.queries.account_queries import get_account, list_accounts
 from collection_assistant.db.queries.audit_queries import get_audit_record, list_recent_audits
 from collection_assistant.db.queries.customer_queries import get_customer, list_customers
 from collection_assistant.db.session import db_session
@@ -172,7 +171,6 @@ async def recent_audits() -> list:
 async def get_portfolio() -> list:
     """Full customer + account data for the dashboard table."""
     from collection_assistant.db.models import Customer, Account, Dispute
-    from sqlalchemy import func
     with db_session() as session:
         rows = (
             session.query(Customer, Account)
@@ -199,7 +197,6 @@ async def get_portfolio() -> list:
 
         # Last run lookup per customer (most recent completed workflow)
         from collection_assistant.db.models import WorkflowAudit
-        from sqlalchemy import func as _func
         last_runs_q = (
             session.query(
                 WorkflowAudit.customer_id,
@@ -314,7 +311,7 @@ async def get_customer_runs(customer_id: str) -> list:
 @router.get("/data/customer/{customer_id}")
 async def get_customer_detail(customer_id: str) -> dict:
     """Full customer detail for Page 3 — customer profile view."""
-    from collection_assistant.db.models import Customer, Account, Dispute, InteractionHistory, PaymentHistory
+    from collection_assistant.db.models import Account, Dispute, InteractionHistory, PaymentHistory
     with db_session() as session:
         from collection_assistant.exceptions import CustomerNotFoundError
         try:

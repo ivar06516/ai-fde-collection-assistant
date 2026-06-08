@@ -1,4 +1,3 @@
-from typing import Optional
 from sqlalchemy.orm import Session
 from collection_assistant.db.models import Account, PaymentHistory
 from collection_assistant.exceptions import AccountNotFoundError

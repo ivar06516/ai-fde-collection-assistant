@@ -1,5 +1,4 @@
 ﻿"""UC-002: Customer Profile Agent — unit tests covering AC-002-01 through AC-002-05."""
-import json
 import pytest
 from unittest.mock import MagicMock, patch
 from datetime import date, datetime, timezone

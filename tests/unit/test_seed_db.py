@@ -17,16 +17,17 @@ def empty_engine():
 @pytest.fixture
 def seeded_engine():
     """In-memory SQLite seeded with default data (10 named + 90 random)."""
-    import sys, os
+    import sys
+    import os
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
     from collection_assistant.db.models import Base
-    from collection_assistant.db.session import _get_session_factory
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     with Session() as session:
         # Import seed function and run with in-memory engine
-        import importlib.util, os as _os
+        import importlib.util
+        import os as _os
         spec = importlib.util.spec_from_file_location(
             "seed_db",
             _os.path.join(_os.path.dirname(__file__), "..", "..", "scripts", "seed_db.py")
@@ -46,7 +47,8 @@ def scenarios_engine():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     with Session() as session:
-        import importlib.util, os as _os
+        import importlib.util
+        import os as _os
         spec = importlib.util.spec_from_file_location(
             "seed_db",
             _os.path.join(_os.path.dirname(__file__), "..", "..", "scripts", "seed_db.py")
@@ -254,7 +256,8 @@ class TestAC00806FakerReproducible:
             Base.metadata.create_all(eng)
             Session = sessionmaker(bind=eng)
             with Session() as session:
-                import importlib.util, os as _os
+                import importlib.util
+                import os as _os
                 spec = importlib.util.spec_from_file_location(
                     "seed_db",
                     _os.path.join(_os.path.dirname(__file__), "..", "..", "scripts", "seed_db.py")

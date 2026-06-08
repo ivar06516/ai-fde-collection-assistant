@@ -1,7 +1,6 @@
 ﻿"""UC-007: Audit Trail and Decision Lineage — unit tests covering AC-007-01 through AC-007-07."""
 import json
 import pytest
-from unittest.mock import MagicMock, patch
 from datetime import datetime, timezone
 
 from collection_assistant.tools.audit_tools import build_audit_record
@@ -325,7 +324,6 @@ class TestAC00707NoLLMCall:
         assert llm_imports == [], f"LLM imports found in audit_tools: {llm_imports}"
 
     def test_audit_agent_has_no_llm_call(self):
-        import ast
         with open("src/collection_assistant/agents/audit.py") as f:
             src = f.read()
         assert "get_llm" not in src, "audit.py should not call get_llm()"

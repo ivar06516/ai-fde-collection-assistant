@@ -69,9 +69,9 @@ def _node_stage1(state: CollectionWorkflowState) -> CollectionWorkflowState:
     """
     fut_c = _STAGE_POOL.submit(run_customer_profile_agent, state)
     fut_a = _STAGE_POOL.submit(run_account_profile_agent, state)
-    res_c = fut_c.result()
-    res_a = fut_a.result()
-    # res_c and res_a ARE state (same object) — agents update in place and return self
+    fut_c.result()
+    fut_a.result()
+    # futures block until done — agents update state in place and return self
     # Just ensure error_log merged (agents already wrote to state directly)
     return state
 

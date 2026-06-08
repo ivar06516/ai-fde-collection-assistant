@@ -1,8 +1,6 @@
 ﻿"""Arrears Prediction Agent — forward-looking arrears forecast."""
-import json
 from datetime import datetime, timezone
 
-from collection_assistant.config import get_settings
 from collection_assistant.graph.state import CollectionWorkflowState
 from collection_assistant import event_bus
 from collection_assistant.tools.arrears_tools import (

@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from datetime import date
 
-from collection_assistant.models.account import AccountProfile, PaymentRecord
+from collection_assistant.models.account import AccountProfile
 from collection_assistant.tools.account_tools import (
     get_account_balance,
     get_delinquency_status,
