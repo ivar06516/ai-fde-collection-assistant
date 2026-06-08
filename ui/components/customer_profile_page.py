@@ -93,173 +93,177 @@ def render_customer_profile_page(detail: dict, on_run_analysis, runs: list = Non
 
     st.markdown("---")
 
-    # ── In-page anchor navigation ──────────────────────────────────────────
+    # ── In-page section navigation (functional st.button pills) ───────────
     _SECTIONS = ["Overview", "Accounts", "Disputes", "Previous Runs", "Interactions"]
-    _ANCHORS  = ["overview", "accounts", "disputes", "prev_runs", "interactions"]
-    nav_html = ''.join([
-        f'<a href="#{a}" style="background:#F5F5F5;color:#6A0DAD;padding:4px 12px;'
-        f'border-radius:12px;font-size:0.78rem;font-weight:600;text-decoration:none;'
-        f'margin-right:6px;border:1px solid #E0E0E0">{s}</a>'
-        for s, a in zip(_SECTIONS, _ANCHORS)
-    ])
-    st.markdown(f'<div style="margin-bottom:1rem">{nav_html}</div>',
-                unsafe_allow_html=True)
-
-    # ── Section 1: Demographics + Contact ─────────────────────────────────
-    st.markdown('<div id="overview"></div>', unsafe_allow_html=True)
-    st.markdown("#### Customer Overview")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("Age", detail.get("age","—"))
-        st.metric("Gender", detail.get("gender","—") or "—")
-    with c2:
-        st.metric("Employment", (detail.get("employment_status","—") or "—").replace("_"," ").title())
-        income = detail.get("annual_income") or 0
-        st.metric("Annual Income", f"${income:,.0f}")
-    with c3:
-        st.metric("Preferred Channel", (detail.get("preferred_channel","—") or "—").title())
-        st.metric("Preferred Time", (detail.get("preferred_time","—") or "—").title())
-    with c4:
-        st.metric("City", detail.get("city","—") or "—")
-        st.metric("State", detail.get("state","—") or "—")
-
+    nav_cols = st.columns(len(_SECTIONS))
+    active_section = st.session_state.get("profile_section", "Overview")
+    for col, section in zip(nav_cols, _SECTIONS):
+        with col:
+            is_active = (active_section == section)
+            if st.button(section, key=f"prof_sec_{section}", use_container_width=True,
+                         type="primary" if is_active else "secondary"):
+                st.session_state["profile_section"] = section
+                st.rerun()
     st.markdown("")
 
-    # ── Section 2: All Accounts ────────────────────────────────────────────
-    st.markdown('<div id="accounts"></div>', unsafe_allow_html=True)
-    if accounts:
+    # ── Section 1: Overview ────────────────────────────────────────────────
+    if active_section == "Overview":
+        st.markdown("#### Customer Overview")
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.metric("Age", detail.get("age","—"))
+            st.metric("Gender", detail.get("gender","—") or "—")
+        with c2:
+            st.metric("Employment", (detail.get("employment_status","—") or "—").replace("_"," ").title())
+            income = detail.get("annual_income") or 0
+            st.metric("Annual Income", f"${income:,.0f}")
+        with c3:
+            st.metric("Preferred Channel", (detail.get("preferred_channel","—") or "—").title())
+            st.metric("Preferred Time", (detail.get("preferred_time","—") or "—").title())
+        with c4:
+            st.metric("City", detail.get("city","—") or "—")
+            st.metric("State", detail.get("state","—") or "—")
+
+    # ── Section 2: Accounts ────────────────────────────────────────────────
+    elif active_section == "Accounts":
         st.markdown("#### Accounts")
-        for acc in accounts:
-            prod   = PRODUCT_LABELS.get(acc["product_type"], acc["product_type"])
-            stat   = acc["account_status"]
-            ss     = STATUS_STYLE.get(stat,"background:#eee;color:#333")
-            dpd    = acc.get("days_past_due", 0)
-            dpd_c  = "#C62828" if dpd>60 else "#E65100" if dpd>30 else "#2E7D32"
-            otr    = acc.get("on_time_rate", 1.0)
-            otr_c  = "#2E7D32" if otr>=0.8 else "#E65100" if otr>=0.5 else "#C62828"
+        if accounts:
+            for acc in accounts:
+                prod   = PRODUCT_LABELS.get(acc["product_type"], acc["product_type"])
+                stat   = acc["account_status"]
+                ss     = STATUS_STYLE.get(stat,"background:#eee;color:#333")
+                dpd    = acc.get("days_past_due", 0)
+                dpd_c  = "#C62828" if dpd>60 else "#E65100" if dpd>30 else "#2E7D32"
+                otr    = acc.get("on_time_rate", 1.0)
+                otr_c  = "#2E7D32" if otr>=0.8 else "#E65100" if otr>=0.5 else "#C62828"
 
-            with st.expander(
-                f"{prod} — {acc['account_id']}  |  "
-                f"{'DPD: '+str(dpd) if dpd else 'Current'}  |  "
-                f"${acc['outstanding_balance']:,.0f} outstanding",
-                expanded=(acc["account_id"] == (chosen_acc.get("account_id") if chosen_acc else None)),
-            ):
-                ac1, ac2, ac3, ac4 = st.columns(4)
-                with ac1:
-                    st.markdown(_badge(stat.title(), ss), unsafe_allow_html=True)
-                    st.metric("Outstanding", f"${acc['outstanding_balance']:,.2f}")
-                    st.metric("Original", f"${acc['original_balance']:,.2f}")
-                with ac2:
-                    st.markdown(
-                        f'<div style="font-size:2rem;font-weight:800;color:{dpd_c}">{dpd}</div>'
-                        f'<div style="font-size:0.75rem;color:#616161">Days Past Due</div>',
-                        unsafe_allow_html=True)
-                with ac3:
-                    st.markdown(
-                        f'<div style="font-size:1.6rem;font-weight:800;color:{otr_c}">{otr:.0%}</div>'
-                        f'<div style="font-size:0.75rem;color:#616161">On-Time Payment Rate</div>',
-                        unsafe_allow_html=True)
-                    missed = acc.get("missed_last_6m", 0)
-                    if missed:
-                        st.caption(f"⚠ {missed} missed in last 6 months")
-                with ac4:
-                    st.metric("Last Payment", f"${acc.get('last_payment_amount') or 0:,.0f}")
-                    st.metric("Missed (6m)", acc.get("missed_last_6m", 0))
+                with st.expander(
+                    f"{prod} — {acc['account_id']}  |  "
+                    f"{'DPD: '+str(dpd) if dpd else 'Current'}  |  "
+                    f"${acc['outstanding_balance']:,.0f} outstanding",
+                    expanded=(acc["account_id"] == (chosen_acc.get("account_id") if chosen_acc else None)),
+                ):
+                    ac1, ac2, ac3, ac4 = st.columns(4)
+                    with ac1:
+                        st.markdown(_badge(stat.title(), ss), unsafe_allow_html=True)
+                        st.metric("Outstanding", f"${acc['outstanding_balance']:,.2f}")
+                        st.metric("Original", f"${acc['original_balance']:,.2f}")
+                    with ac2:
+                        st.markdown(
+                            f'<div style="font-size:2rem;font-weight:800;color:{dpd_c}">{dpd}</div>'
+                            f'<div style="font-size:0.75rem;color:#616161">Days Past Due</div>',
+                            unsafe_allow_html=True)
+                    with ac3:
+                        st.markdown(
+                            f'<div style="font-size:1.6rem;font-weight:800;color:{otr_c}">{otr:.0%}</div>'
+                            f'<div style="font-size:0.75rem;color:#616161">On-Time Payment Rate</div>',
+                            unsafe_allow_html=True)
+                        missed = acc.get("missed_last_6m", 0)
+                        if missed:
+                            st.caption(f"⚠ {missed} missed in last 6 months")
+                    with ac4:
+                        st.metric("Last Payment", f"${acc.get('last_payment_amount') or 0:,.0f}")
+                        st.metric("Missed (6m)", acc.get("missed_last_6m", 0))
 
-                # Payment history chart
-                ph = acc.get("payment_history", [])
-                if ph:
-                    st.plotly_chart(_payment_chart(ph), use_container_width=True)
-
-    st.markdown("")
+                    ph = acc.get("payment_history", [])
+                    if ph:
+                        st.plotly_chart(_payment_chart(ph), use_container_width=True)
+        else:
+            st.info("No accounts found for this customer.")
 
     # ── Section 3: Disputes ────────────────────────────────────────────────
-    disputes = detail.get("disputes", [])
-    st.markdown('<div id="disputes"></div>', unsafe_allow_html=True)
-    if disputes:
+    elif active_section == "Disputes":
         st.markdown("#### Disputes")
-        active   = [d for d in disputes if d["status"] in ("open","under_review","escalated")]
-        resolved = [d for d in disputes if d["status"] == "resolved"]
-        if active:
-            for d in active:
-                hold_badge = ("🚫 Hold Active" if d["collection_hold"] else "No Hold")
-                hold_style = ("color:#C62828;font-weight:700" if d["collection_hold"] else "color:#2E7D32;font-weight:700")
-                with st.expander(f"⚠ {d['type'].replace('_',' ').title()} — {d['dispute_id']} ({d['status'].title()})"):
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.markdown(f"**Opened:** {d['opened']}")
-                        st.markdown(f"**Status:** {d['status'].replace('_',' ').title()}")
-                    with col_b:
-                        st.markdown(f"**Collection Hold:** <span style='{hold_style}'>{hold_badge}</span>",
-                                    unsafe_allow_html=True)
-                    if d.get("description"):
-                        st.caption(d["description"])
-        if resolved:
-            st.caption(f"✅ {len(resolved)} resolved dispute(s)")
+        disputes = detail.get("disputes", [])
+        if disputes:
+            active_d = [d for d in disputes if d["status"] in ("open","under_review","escalated")]
+            resolved = [d for d in disputes if d["status"] == "resolved"]
+            if active_d:
+                for d in active_d:
+                    hold_badge = ("🚫 Hold Active" if d["collection_hold"] else "No Hold")
+                    hold_style = ("color:#C62828;font-weight:700" if d["collection_hold"] else "color:#2E7D32;font-weight:700")
+                    with st.expander(f"⚠ {d['type'].replace('_',' ').title()} — {d['dispute_id']} ({d['status'].title()})"):
+                        col_a, col_b = st.columns(2)
+                        with col_a:
+                            st.markdown(f"**Opened:** {d['opened']}")
+                            st.markdown(f"**Status:** {d['status'].replace('_',' ').title()}")
+                        with col_b:
+                            st.markdown(f"**Collection Hold:** <span style='{hold_style}'>{hold_badge}</span>",
+                                        unsafe_allow_html=True)
+                        if d.get("description"):
+                            st.caption(d["description"])
+            else:
+                st.success("No active disputes.")
+            if resolved:
+                st.caption(f"✅ {len(resolved)} resolved dispute(s)")
+        else:
+            st.info("No disputes on record.")
 
-    # ── Section 4: Previous Analysis Runs ────────────────────────────────
-    st.markdown('<div id="prev_runs"></div>', unsafe_allow_html=True)
-    if runs:
-        import streamlit as _st
-        _st.markdown("#### Previous Analysis Runs")
-        ACTION_COLORS = {
-            "offer_settlement":"#00695C","escalate_to_legal":"#4A148C",
-            "initiate_call":"#1565C0","place_on_hold":"#C62828",
-            "no_action_required":"#137333","offer_payment_plan":"#E65100",
-            "send_sms":"#2E7D32","send_email":"#4527A0","flag_for_writeoff":"#333",
-        }
-        for run in runs[:5]:
-            action = run.get("nba_action","—")
-            conf   = run.get("nba_confidence") or 0
-            run_at = (run.get("created_at") or "")[:16]
-            ms     = run.get("total_ms") or 0
-            trigger= (run.get("trigger_context") or "").replace("_"," ").title()
-            a_color= ACTION_COLORS.get(action,"#888")
-            wf_id  = run.get("workflow_id","")
-            cols = _st.columns([2, 2, 1.5, 1.5, 1])
-            with cols[0]:
-                _st.markdown(
-                    f'<div style="font-weight:700;color:{a_color}">{action.replace("_"," ").title()}</div>'
-                    f'<div style="font-size:0.75rem;color:#616161">{trigger}</div>',
-                    unsafe_allow_html=True)
-            with cols[1]:
-                _st.markdown(
-                    f'<div style="font-size:0.85rem;color:#616161">{run_at}</div>',
-                    unsafe_allow_html=True)
-            with cols[2]:
-                _st.markdown(
-                    f'<div style="font-weight:700;color:{a_color}">{conf:.0%}</div>'
-                    f'<div style="font-size:0.75rem;color:#616161">confidence</div>',
-                    unsafe_allow_html=True)
-            with cols[3]:
-                _st.markdown(
-                    f'<div style="font-size:0.82rem;color:#616161">{ms/1000:.1f}s</div>',
-                    unsafe_allow_html=True)
-            with cols[4]:
-                if _st.button("View", key=f"run_view_{wf_id}", use_container_width=True):
-                    if on_view_run:
-                        on_view_run(wf_id, detail["customer_id"])
-            _st.markdown('<hr style="border:none;border-top:1px solid #F5F5F5;margin:2px 0">',
-                         unsafe_allow_html=True)
-        _st.markdown("")
+    # ── Section 4: Previous Analysis Runs ─────────────────────────────────
+    elif active_section == "Previous Runs":
+        st.markdown("#### Previous Analysis Runs")
+        if runs:
+            ACTION_COLORS = {
+                "offer_settlement":"#00695C","escalate_to_legal":"#4A148C",
+                "initiate_call":"#1565C0","place_on_hold":"#C62828",
+                "no_action_required":"#137333","offer_payment_plan":"#E65100",
+                "send_sms":"#2E7D32","send_email":"#4527A0","flag_for_writeoff":"#333",
+            }
+            for run in runs[:5]:
+                action = run.get("nba_action","—")
+                conf   = run.get("nba_confidence") or 0
+                run_at = (run.get("created_at") or "")[:16]
+                ms     = run.get("total_ms") or 0
+                trigger= (run.get("trigger_context") or "").replace("_"," ").title()
+                a_color= ACTION_COLORS.get(action,"#888")
+                wf_id  = run.get("workflow_id","")
+                cols = st.columns([2, 2, 1.5, 1.5, 1])
+                with cols[0]:
+                    st.markdown(
+                        f'<div style="font-weight:700;color:{a_color}">{action.replace("_"," ").title()}</div>'
+                        f'<div style="font-size:0.75rem;color:#616161">{trigger}</div>',
+                        unsafe_allow_html=True)
+                with cols[1]:
+                    st.markdown(
+                        f'<div style="font-size:0.85rem;color:#616161">{run_at}</div>',
+                        unsafe_allow_html=True)
+                with cols[2]:
+                    st.markdown(
+                        f'<div style="font-weight:700;color:{a_color}">{conf:.0%}</div>'
+                        f'<div style="font-size:0.75rem;color:#616161">confidence</div>',
+                        unsafe_allow_html=True)
+                with cols[3]:
+                    st.markdown(
+                        f'<div style="font-size:0.82rem;color:#616161">{ms/1000:.1f}s</div>',
+                        unsafe_allow_html=True)
+                with cols[4]:
+                    if st.button("View", key=f"run_view_{wf_id}", use_container_width=True):
+                        if on_view_run:
+                            on_view_run(wf_id, detail["customer_id"])
+                st.markdown('<hr style="border:none;border-top:1px solid #F5F5F5;margin:2px 0">',
+                             unsafe_allow_html=True)
+        else:
+            st.info("No previous analysis runs for this customer.")
 
     # ── Section 5: Interaction History ────────────────────────────────────
-    interactions = detail.get("interactions", [])
-    st.markdown('<div id="interactions"></div>', unsafe_allow_html=True)
-    if interactions:
+    elif active_section == "Interactions":
         st.markdown("#### Interaction History")
-        for ix in interactions[:8]:
-            outcome = ix.get("outcome","—") or "—"
-            oc = OUTCOME_COLOR.get(outcome,"#666")
-            st.markdown(
-                f'<div style="display:flex;gap:0.8rem;align-items:flex-start;'
-                f'padding:0.5rem 0;border-bottom:1px solid #F5F5F5">'
-                f'<div style="font-size:0.75rem;color:#616161;min-width:120px">'
-                f'{str(ix.get("date",""))[:10]}</div>'
-                f'<div style="font-size:0.78rem;font-weight:600;min-width:60px">'
-                f'{(ix.get("type","") or "").title()}</div>'
-                f'<div style="flex:1;font-size:0.78rem">{ix.get("notes","") or ""}</div>'
-                f'<div style="font-size:0.75rem;font-weight:700;color:{oc}">{outcome.replace("_"," ").title()}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+        interactions = detail.get("interactions", [])
+        if interactions:
+            for ix in interactions[:8]:
+                outcome = ix.get("outcome","—") or "—"
+                oc = OUTCOME_COLOR.get(outcome,"#666")
+                st.markdown(
+                    f'<div style="display:flex;gap:0.8rem;align-items:flex-start;'
+                    f'padding:0.5rem 0;border-bottom:1px solid #F5F5F5">'
+                    f'<div style="font-size:0.75rem;color:#616161;min-width:120px">'
+                    f'{str(ix.get("date",""))[:10]}</div>'
+                    f'<div style="font-size:0.78rem;font-weight:600;min-width:60px">'
+                    f'{(ix.get("type","") or "").title()}</div>'
+                    f'<div style="flex:1;font-size:0.78rem">{ix.get("notes","") or ""}</div>'
+                    f'<div style="font-size:0.75rem;font-weight:700;color:{oc}">{outcome.replace("_"," ").title()}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("No interaction history recorded.")

@@ -508,17 +508,36 @@ elif st.session_state.page == "analysis":
                     unsafe_allow_html=True,
                 )
 
+            # ── Persistent next-step CTAs (ABOVE tabs, always visible) ─────
+            if workflow_status == "completed":
+                nx1, nx2, _ = st.columns([2.2, 2.2, 2])
+                with nx1:
+                    if st.button("👤 View Customer Profile", key="next_profile",
+                                 use_container_width=True,
+                                 help="See demographics, accounts, payment history"):
+                        st.session_state.profile_customer_id = row.get("customer_id")
+                        st.session_state.profile_detail = None
+                        st.session_state.page = "profile"
+                        st.rerun()
+                with nx2:
+                    if st.button("← Dashboard", key="next_back",
+                                 use_container_width=True,
+                                 help="Return to portfolio to analyse another customer"):
+                        st.session_state.page = "dashboard"
+                        st.rerun()
+
             # ── Tabs: one click to any output, zero scroll ────────────────
             nba_error  = agent_statuses.get("nba",{}).get("status") == "error"
             arr_error  = agent_statuses.get("arrears_prediction",{}).get("status") == "error"
             dis_error  = agent_statuses.get("dispute",{}).get("status") == "error"
             aud_error  = agent_statuses.get("audit",{}).get("status") == "error"
 
-            tab_nba_label  = ("⭐ NBA ✓" if nba_done else "⭐ NBA ✗" if nba_error else "⭐ NBA ⟳")
+            # Fix: ✗ -> ⚠ (warning not failure; still clickable)
+            tab_nba_label  = ("⭐ NBA ✓" if nba_done else "⭐ NBA ⚠" if nba_error else "⭐ NBA ⟳")
             tab_pred_label = ("📊 Predictions ✓" if arr_done and dis_done
-                              else "📊 Predictions ✗" if arr_error or dis_error
+                              else "📊 Predictions ⚠" if arr_error or dis_error
                               else "📊 Predictions ⟳")
-            tab_audit_label= ("📋 Audit Trail ✓" if audit_done else "📋 Audit Trail ✗" if aud_error else "📋 Audit Trail ⟳")
+            tab_audit_label= ("📋 Audit Trail ✓" if audit_done else "📋 Audit Trail ⚠" if aud_error else "📋 Audit Trail ⟳")
 
             t1, t2, t3 = st.tabs([tab_nba_label, tab_pred_label, tab_audit_label])
 
@@ -610,5 +629,7 @@ elif st.session_state.page == "profile":
 
     render_customer_profile_page(detail, go_to_analysis_from_profile,
                                   runs=profile_runs, on_view_run=go_to_replay_from_profile)
+
+
 
 
