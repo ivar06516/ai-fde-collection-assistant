@@ -126,9 +126,15 @@ jobs:
 
     steps:
       - name: Trigger Render staging deploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
         run: |
-          curl --fail -X POST "${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}"
-          echo "Staging deploy triggered"
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "RENDER_STAGING_DEPLOY_HOOK not configured — skipping (add secret in GitHub Settings > Secrets)"
+          else
+            curl --fail -X POST "$DEPLOY_HOOK"
+            echo "Staging deploy triggered"
+          fi
 
   # ── Job 5: Deploy to Production (main branch) ─────────────────────────────
   deploy-prod:
@@ -140,9 +146,15 @@ jobs:
 
     steps:
       - name: Trigger Render prod deploy
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_PROD_DEPLOY_HOOK }}
         run: |
-          curl --fail -X POST "${{ secrets.RENDER_PROD_DEPLOY_HOOK }}"
-          echo "Production deploy triggered"
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "RENDER_PROD_DEPLOY_HOOK not configured — skipping (add secret in GitHub Settings > Secrets)"
+          else
+            curl --fail -X POST "$DEPLOY_HOOK"
+            echo "Production deploy triggered"
+          fi
 
       - name: Notify deploy complete
         run: |
