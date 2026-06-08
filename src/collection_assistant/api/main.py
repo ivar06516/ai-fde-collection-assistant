@@ -15,6 +15,12 @@ from collection_assistant.observability import setup_observability
 async def lifespan(app: FastAPI):
     setup_observability(get_settings())
     create_all_tables()
+    # Auto-instrument FastAPI after OTel provider is ready — creates spans for every request
+    try:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        FastAPIInstrumentor.instrument_app(app)
+    except Exception:  # OTel packages missing or provider not configured — safe to skip
+        pass
     yield
 
 
