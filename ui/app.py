@@ -5,7 +5,10 @@ Page 2: Analysis   — pipeline execution + progressive results + audit trail
 Page 3: Profile    — read-only customer profile (demographics, accounts, history)
 """
 import sys, os, time
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src"))
+_UI_DIR   = os.path.dirname(os.path.abspath(__file__))   # .../ui/
+_REPO_ROOT = os.path.dirname(_UI_DIR)                     # .../ai-fde-collection-assistant/
+sys.path.insert(0, os.path.join(_REPO_ROOT, "src"))       # for collection_assistant.*
+sys.path.insert(0, _REPO_ROOT)                            # for ui.components.* on Streamlit Cloud
 
 import streamlit as st
 
