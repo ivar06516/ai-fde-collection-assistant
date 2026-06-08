@@ -40,14 +40,16 @@ footer                             { display: none !important; }
 </style>""", unsafe_allow_html=True)
 
 # ── Imports ────────────────────────────────────────────────────────────────────
-from ui.components.arrears_card import render_arrears_card
-from ui.components.audit_panel import render_audit_panel
-from ui.components.customer_profile_page import render_customer_profile_page
-from ui.components.dashboard import render_dashboard
-from ui.components.dispute_card import render_dispute_card
-from ui.components.execution_panel import render_execution_panel
-from ui.components.nba_card import render_nba_card
-from ui.sse_client import (
+# Use relative-style imports so they work both locally and on Streamlit Cloud
+# (Streamlit adds the script's directory to sys.path; _REPO_ROOT covers local dev)
+from components.arrears_card import render_arrears_card
+from components.audit_panel import render_audit_panel
+from components.customer_profile_page import render_customer_profile_page
+from components.dashboard import render_dashboard
+from components.dispute_card import render_dispute_card
+from components.execution_panel import render_execution_panel
+from components.nba_card import render_nba_card
+from sse_client import (
     fetch_customer_detail, fetch_customer_runs, fetch_last_run,
     fetch_portfolio, get_workflow_state, trigger_pipeline,
 )
