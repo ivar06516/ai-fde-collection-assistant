@@ -30,10 +30,13 @@ class Settings(BaseSettings):
     agent_timeout_seconds: int = 30
     agent_max_retries: int = 3
 
-    # Observability — Grafana Cloud OTLP (all optional; app works without them)
-    grafana_otlp_endpoint: str = ""   # e.g. https://otlp-gateway-prod-us-east-0.grafana.net/otlp
-    grafana_otlp_token: str = ""      # Grafana Cloud API key / token
-    grafana_instance_id: str = ""     # Grafana Cloud numeric stack/instance ID
+    # Observability — OTLP (all optional; app works without them)
+    # New Relic:  OTLP_ENDPOINT=https://otlp.nr-data.net  OTLP_PROVIDER=newrelic
+    # Grafana:    OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-0.grafana.net/otlp  OTLP_PROVIDER=grafana
+    otlp_endpoint: str = ""           # base OTLP HTTP endpoint (no trailing /v1/...)
+    otlp_token: str = ""              # New Relic license key OR Grafana Cloud API token
+    otlp_provider: str = "newrelic"   # "newrelic" or "grafana"
+    grafana_instance_id: str = ""     # only required when otlp_provider=grafana
 
     # Runtime metadata reported as OTel resource attributes
     service_name: str = "collection-assistant"

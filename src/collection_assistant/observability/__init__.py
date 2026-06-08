@@ -63,13 +63,13 @@ def setup_observability(settings) -> None:
     _setup_logging()
 
     # 2. OTel traces + metrics — only if endpoint + token are provided
-    endpoint = getattr(settings, "grafana_otlp_endpoint", "") or ""
-    token = getattr(settings, "grafana_otlp_token", "") or ""
+    endpoint = getattr(settings, "otlp_endpoint", "") or ""
+    token = getattr(settings, "otlp_token", "") or ""
 
     if not endpoint or not token:
         _log.info(
             "Observability: OTLP not configured — metrics/traces disabled. "
-            "Set GRAFANA_OTLP_ENDPOINT and GRAFANA_OTLP_TOKEN to enable."
+            "Set OTLP_ENDPOINT and OTLP_TOKEN to enable."
         )
         return
 
@@ -111,16 +111,11 @@ def _setup_tracing(settings):
 def _setup_metrics(settings):
     """Initialise OTel metrics.  Returns a Meter or None."""
     try:
-        import base64
-
         from opentelemetry.sdk.metrics import MeterProvider
         from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
         from opentelemetry.sdk.resources import Resource
         from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-
-        raw = f"{getattr(settings, 'grafana_instance_id', '')}:{settings.grafana_otlp_token}"
-        b64 = base64.b64encode(raw.encode()).decode()
-        headers = {"Authorization": f"Basic {b64}"}
+        from collection_assistant.observability.tracing import _build_auth_headers
 
         resource = Resource.create(
             {
@@ -130,8 +125,8 @@ def _setup_metrics(settings):
         )
 
         exporter = OTLPMetricExporter(
-            endpoint=f"{settings.grafana_otlp_endpoint.rstrip('/')}/v1/metrics",
-            headers=headers,
+            endpoint=f"{settings.otlp_endpoint.rstrip('/')}/v1/metrics",
+            headers=_build_auth_headers(settings),
         )
 
         reader = PeriodicExportingMetricReader(exporter, export_interval_millis=60_000)
@@ -146,10 +141,7 @@ def _setup_metrics(settings):
         from collection_assistant.observability.metrics import create_instruments
         create_instruments(meter)
 
-        _log.info(
-            "OTel metrics initialised",
-            extra={"endpoint": settings.grafana_otlp_endpoint},
-        )
+        _log.info("OTel metrics initialised", extra={"endpoint": settings.otlp_endpoint})
         return meter
 
     except ImportError:

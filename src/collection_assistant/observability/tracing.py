@@ -5,6 +5,18 @@ import logging
 _log = logging.getLogger(__name__)
 
 
+def _build_auth_headers(settings) -> dict:
+    """Return the correct auth headers for the configured OTLP provider."""
+    provider = getattr(settings, "otlp_provider", "newrelic").lower()
+    token = settings.otlp_token
+    if provider == "grafana":
+        instance_id = getattr(settings, "grafana_instance_id", "")
+        b64 = base64.b64encode(f"{instance_id}:{token}".encode()).decode()
+        return {"Authorization": f"Basic {b64}"}
+    # New Relic (default): api-key header
+    return {"api-key": token}
+
+
 def setup_tracing(settings):
     """
     Initialise a TracerProvider with:
@@ -24,11 +36,6 @@ def setup_tracing(settings):
         _log.warning("OTel tracing packages not installed — tracing disabled")
         return None
 
-    # Build Basic-auth header required by Grafana Cloud OTLP endpoint
-    raw = f"{settings.grafana_instance_id}:{settings.grafana_otlp_token}"
-    b64 = base64.b64encode(raw.encode()).decode()
-    headers = {"Authorization": f"Basic {b64}"}
-
     resource = Resource.create(
         {
             "service.name": getattr(settings, "service_name", "collection-assistant"),
@@ -39,15 +46,12 @@ def setup_tracing(settings):
     provider = TracerProvider(resource=resource)
 
     exporter = OTLPSpanExporter(
-        endpoint=f"{settings.grafana_otlp_endpoint.rstrip('/')}/v1/traces",
-        headers=headers,
+        endpoint=f"{settings.otlp_endpoint.rstrip('/')}/v1/traces",
+        headers=_build_auth_headers(settings),
     )
     provider.add_span_processor(SimpleSpanProcessor(exporter))
 
     trace.set_tracer_provider(provider)
 
-    _log.info(
-        "OTel tracing initialised",
-        extra={"endpoint": settings.grafana_otlp_endpoint},
-    )
+    _log.info("OTel tracing initialised", extra={"endpoint": settings.otlp_endpoint})
     return trace.get_tracer("collection_assistant")
