@@ -9,11 +9,12 @@ _log = logging.getLogger(__name__)
 # Instrument singletons — populated by create_instruments()
 # ---------------------------------------------------------------------------
 _workflow_counter = None       # Counter: workflows started/completed/errored
-_workflow_duration = None      # Histogram(s): end-to-end pipeline seconds
+_workflow_duration = None      # Histogram: end-to-end pipeline seconds
 _agent_duration = None         # Histogram: per-agent seconds
 _nba_counter = None            # Counter: NBA actions recommended
 _dispute_hold_counter = None   # Counter: collection holds triggered
 _token_counter = None          # Counter: LLM tokens consumed
+_error_counter = None          # Counter: agent + pipeline errors by type
 
 
 def create_instruments(meter) -> None:
@@ -22,7 +23,7 @@ def create_instruments(meter) -> None:
     Called once during setup_observability() after the MeterProvider is ready.
     """
     global _workflow_counter, _workflow_duration, _agent_duration
-    global _nba_counter, _dispute_hold_counter, _token_counter
+    global _nba_counter, _dispute_hold_counter, _token_counter, _error_counter
 
     _workflow_counter = meter.create_counter(
         name="collection_assistant.workflow.total",
@@ -57,6 +58,12 @@ def create_instruments(meter) -> None:
     _token_counter = meter.create_counter(
         name="collection_assistant.llm.tokens_total",
         description="LLM tokens consumed by agent and type",
+        unit="1",
+    )
+
+    _error_counter = meter.create_counter(
+        name="collection_assistant.errors.total",
+        description="Total errors by agent and error type",
         unit="1",
     )
 
@@ -125,6 +132,19 @@ def record_workflow_end(
 
     if collection_hold and _dispute_hold_counter is not None:
         _dispute_hold_counter.add(1)
+
+
+def record_error(agent_name: str, error_type: str, trigger_context: str = "") -> None:
+    """Increment error counter for a specific agent and error type."""
+    if _error_counter is not None:
+        _error_counter.add(
+            1,
+            attributes={
+                "agent_name": agent_name,
+                "error_type": error_type,
+                "trigger_context": trigger_context,
+            },
+        )
 
 
 def record_agent_run(

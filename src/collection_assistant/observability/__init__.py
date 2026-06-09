@@ -75,11 +75,33 @@ def setup_observability(settings) -> None:
 
     _tracer = _setup_tracing(settings)
     _meter = _setup_metrics(settings)
+    _setup_auto_instrumentation()
 
 
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _setup_auto_instrumentation() -> None:
+    """Auto-instrument SQLAlchemy and httpx if packages are available."""
+    try:
+        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+        SQLAlchemyInstrumentor().instrument()
+        _log.info("OTel SQLAlchemy auto-instrumentation enabled")
+    except ImportError:
+        pass
+    except Exception as exc:
+        _log.warning("SQLAlchemy instrumentation failed: %s", exc)
+
+    try:
+        from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+        HTTPXClientInstrumentor().instrument()
+        _log.info("OTel httpx auto-instrumentation enabled")
+    except ImportError:
+        pass
+    except Exception as exc:
+        _log.warning("httpx instrumentation failed: %s", exc)
+
 
 def _setup_logging() -> None:
     """Delegate to logging_config; silently degrade if structlog unavailable."""

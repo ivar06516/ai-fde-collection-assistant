@@ -44,6 +44,14 @@ class RecommendResponse(BaseModel):
 def _run_pipeline_with_events(workflow_id: str, customer_id: str,
                                account_id: str, trigger_context: str) -> None:
     """Run pipeline — agents emit live events via event_bus as they start/complete."""
+    from collection_assistant.observability.logging_config import (
+        bind_workflow_context, clear_workflow_context,
+    )
+    from collection_assistant.observability import newrelic_helper as nr
+
+    # Bind workflow + customer IDs so every log line in this thread carries them
+    bind_workflow_context(workflow_id, customer_id)
+
     event_bus.emit(workflow_id, "pipeline_started", {
         "workflow_id": workflow_id,
         "customer_id": customer_id,
@@ -58,11 +66,17 @@ def _run_pipeline_with_events(workflow_id: str, customer_id: str,
             "total_ms": state.get("total_ms"),
         })
     except (CustomerNotFoundError, AccountNotFoundError) as e:
+        nr.notice_error(e, {"workflow_id": workflow_id, "customer_id": customer_id,
+                            "error_type": type(e).__name__})
         event_bus.emit(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
         _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}  # type: ignore[typeddict-item]
     except Exception as e:
+        nr.notice_error(e, {"workflow_id": workflow_id, "customer_id": customer_id,
+                            "error_type": type(e).__name__})
         event_bus.emit(workflow_id, "workflow_error", {"error": str(e), "workflow_id": workflow_id})
         _workflow_store[workflow_id] = {"workflow_status": "error", "error_log": [str(e)]}  # type: ignore[typeddict-item]
+    finally:
+        clear_workflow_context()
 
 
 @router.post("/recommend", response_model=RecommendResponse, status_code=202)

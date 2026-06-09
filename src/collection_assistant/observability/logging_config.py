@@ -4,6 +4,24 @@ import logging.config
 import sys
 
 
+def _add_otel_trace_context(logger, method, event_dict):  # noqa: ARG001
+    """Structlog processor: inject OTel trace_id + span_id into every log line.
+
+    This enables log-trace correlation in New Relic — click from a log line
+    directly to the associated distributed trace.
+    """
+    try:
+        from opentelemetry import trace
+        span = trace.get_current_span()
+        ctx = span.get_span_context()
+        if ctx.is_valid:
+            event_dict["trace_id"] = format(ctx.trace_id, "032x")
+            event_dict["span_id"] = format(ctx.span_id, "016x")
+    except Exception:
+        pass
+    return event_dict
+
+
 def configure_structlog() -> None:
     """Configure structlog with JSON output, contextvars merging, and stdlib integration."""
     try:
@@ -12,6 +30,7 @@ def configure_structlog() -> None:
         structlog.configure(
             processors=[
                 structlog.contextvars.merge_contextvars,
+                _add_otel_trace_context,           # injects trace_id + span_id
                 structlog.stdlib.add_log_level,
                 structlog.stdlib.add_logger_name,
                 structlog.processors.TimeStamper(fmt="iso", utc=True),
